@@ -1,7 +1,9 @@
 # Stick resolution analyzer by John Punch
 # https://www.reddit.com/user/JohnnyPunch
-version = "1.0.5"
+version = "1.0.6"
 import pygame
+import time  # Імпортуємо модуль time для таймера
+
 print()
 print(f"   _____ __  _      __      ___                __                     ")
 print(f"  / ___// /_(_)____/ /__   /   |  ____  ____ _/ /_  ______  ___  _____")
@@ -28,6 +30,7 @@ def main():
 
     points = []
     prev_x = 0.0
+    start_time = None  # Ініціалізуємо змінну для зберігання часу початку тесту
 
     print("---")
     print(f"Start slowly moving the left stick of the gamepad to the side")
@@ -42,6 +45,7 @@ def main():
                 prev_x = x
                 points.append(abs(x))
                 print(f"{abs(x):.5f}")
+                start_time = time.time()  # Зберігаємо час початку тесту
             else:
                 distance = abs(x - prev_x)
                 prev_x = x
@@ -53,6 +57,9 @@ def main():
             break
 
     if points:
+        end_time = time.time()  # Зберігаємо час завершення тесту
+        test_duration = end_time - start_time  # Обчислюємо тривалість тесту
+
         distances = [abs(points[i] - points[i - 1]) for i in range(1, len(points))]
         avg_distance = sum(distances) / len(distances)
         min_distance = min(distances)
@@ -73,6 +80,7 @@ def main():
         print(f"Minimum distance: {min_distance:.5f}")
         print(f"Maximum distance: {max_distance:.5f}")
         print(f"Number of points: {num_points}")
+        print(f"Test duration: {test_duration:.2f} seconds")  # Виводимо тривалість тесту
 
         # Вивести скільки разів повторюється кожне значення у відсотках
         total_counts = sum(counts.values())
