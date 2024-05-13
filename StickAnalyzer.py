@@ -1,6 +1,6 @@
 # Stick resolution analyzer by John Punch
 # https://www.reddit.com/user/JohnnyPunch
-version = "1.0.2"
+version = "1.0.3"
 import pygame
 
 print(f"   _____ __  _      __      ___                __                     ")
@@ -20,6 +20,7 @@ def main():
 
     if not joysticks:
         print("No controller found")
+        input("Press Enter to exit...")
         return
 
     joystick = joysticks[0]
