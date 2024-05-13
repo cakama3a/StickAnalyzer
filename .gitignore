@@ -1,3 +1,5 @@
 
 /build
 StickAnalyzer.spec
+dist/stick_data.txt
+stick_data.txt
