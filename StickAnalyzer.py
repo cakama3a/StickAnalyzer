@@ -1,6 +1,6 @@
 # Stick resolution analyzer by John Punch
 # https://www.reddit.com/user/JohnnyPunch
-version = "1.0.0"
+version = "1.0.2"
 import pygame
 
 print(f"   _____ __  _      __      ___                __                     ")
@@ -30,6 +30,7 @@ def main():
 
     print("---")
     print(f"Start slowly moving the left stick of the gamepad to the side")
+    print()
 
     while True:
         pygame.event.pump()
@@ -44,9 +45,10 @@ def main():
                 distance = abs(x - prev_x)
                 prev_x = x
                 points.append(abs(x))
-                print(f"{abs(x):.5f} [{distance:.3f}]")
+                if abs(x) != 1.0:
+                    print(f"{abs(x):.5f} [{distance:.3f}]")
 
-        if abs(x) >= 1.0:
+        if abs(x) >= 0.99:
             break
 
     if points:
@@ -56,18 +58,32 @@ def main():
         max_distance = max(distances)
         num_points = len(points)
 
+        # Знайти значення, що повторюється найчастіше
+        from collections import Counter
+        counts = Counter(distances)
+        most_common_value = max(counts, key=counts.get)
+
         print()
-        print(f"\033[1mStick resolution: {min_distance:.4f}\033[0m")
+        print(f"\033[1mStick resolution: {most_common_value:.4f}\033[0m")
         print("---")
         print(f"Average distance: {avg_distance:.4f}")
         print(f"Minimum distance: {min_distance:.4f}")
         print(f"Maximum distance: {max_distance:.4f}")
         print(f"Number of points: {num_points}")
-        print()
 
+        # Вивести скільки разів повторюється кожне значення у відсотках
+        total_counts = sum(counts.values())
+        print("\nValue Occurrences:")
+        for value, count in counts.items():
+            percentage = (count / total_counts) * 100
+            print(f"{value:.4f}: {count} ({percentage:.2f}%)")
+
+        print()
         data_str = ' '.join(f".{point*100000:05.0f}" for point in points)
         print(f"Data:")
         print(f"{data_str}")
+        print()
+        input("Press Enter to exit...")
     else:
         print("No stick movement detected.")
 
