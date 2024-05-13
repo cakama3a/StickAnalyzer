@@ -1,6 +1,6 @@
 # Stick resolution analyzer by John Punch
 # https://www.reddit.com/user/JohnnyPunch
-version = "1.0.4"
+version = "1.0.5"
 import pygame
 print()
 print(f"   _____ __  _      __      ___                __                     ")
@@ -76,20 +76,23 @@ def main():
 
         # Вивести скільки разів повторюється кожне значення у відсотках
         total_counts = sum(counts.values())
-        print("\nValue Occurrences:")
+        print("\nTop 5 Value Occurrences:")
         for i, (value, count) in enumerate(sorted(counts.items(), key=lambda x: x[1], reverse=True)):
-            percentage = (count / total_counts) * 100
-            if i == len(counts) - 1:  # перевіряємо, чи це останній елемент
-                print(f"{value:.5f}: {count} ({percentage:.2f}%)")  # без коми в кінці
+            if i < 5:  # Виводимо лише перші 5 значень
+                percentage = (count / total_counts) * 100
+                print(f"{value:.5f}: {count} ({percentage:.2f}%)")
             else:
-                print(f"{value:.5f}: {count} ({percentage:.2f}%), ", end='')
+                break  # Вийти з циклу після виведення перших 5 значень
 
         # Зберегти дані в текстовий файл
         with open("stick_data.txt", "w") as file:
             data_str = ' '.join(f".{point*100000:05.0f}" for point in points)
             file.write(data_str)
         print("\nData saved to stick_data.txt")
+
         # Додати посилання
+        print()
+        print("-------------")
         print("Support me: \033[4m\033[94mhttps://ko-fi.com/gamepadla\033[0m")
         print("I'm on Reddit: \033[4m\033[94mhttps://www.reddit.com/user/JohnnyPunch\033[0m")
         print("*To open a link, hold down the Ctrl key")
