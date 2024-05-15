@@ -2,8 +2,8 @@ Stick Analyzer is a specialized utility for analyzing and evaluating joystick st
 
 Download: https://github.com/cakama3a/StickAnalyzer/tree/main/dist  
 Author Support: https://ko-fi.com/gamepadla  
-  
-![image](https://github.com/cakama3a/StickAnalyzer/assets/15096106/650a1537-0471-4360-bc64-7ff33d6079f6)
+
+![image](https://github.com/cakama3a/StickAnalyzer/assets/15096106/e28ba88c-bdcf-4d6e-9cc2-20ca035b6a6a)
 
 Key features of Stick Analyzer:
 
@@ -12,6 +12,6 @@ Key features of Stick Analyzer:
 3. Value Frequency Analysis: The program performs a frequency analysis of each unique distance value between points, determining which value occurs most often, as well as the percentage of occurrences for each value out of the total count.
 4. Convenient Data Output: The test results are displayed in a user-friendly and clearly structured format, providing easy access to key resolution metrics and statistical data for users.
 
-![image](https://github.com/cakama3a/StickAnalyzer/assets/15096106/e098d270-f744-4b3a-8b36-ebfeb9b10090)
+![image](https://github.com/cakama3a/StickAnalyzer/assets/15096106/7554c787-4c7e-4999-b139-20791d90620a)
 
 Stick Analyzer is a valuable tool for gaming enthusiasts, developers, and anyone striving to achieve maximum precision and responsiveness from their joysticks or game controllers. This program allows users to gain a comprehensive understanding of the stick's resolution and identify potential issues or limitations related to hardware or drivers.
