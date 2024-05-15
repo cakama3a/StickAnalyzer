@@ -1,8 +1,9 @@
 # Stick resolution analyzer by John Punch
 # https://www.reddit.com/user/JohnnyPunch
-version = "1.0.6"
+version = "1.0.9"
 import pygame
 import time  # Імпортуємо модуль time для таймера
+import matplotlib.pyplot as plt  # Імпортуємо Matplotlib для візуалізації
 
 print()
 print(f"   _____ __  _      __      ___                __                     ")
@@ -74,7 +75,7 @@ def main():
         print()
         print("TEST RESULTS:")
         print("-------------")
-        print(f"\033[1mStick resolution: {most_common_value:.5f}\033[0m")
+        print(f"Stick resolution: {most_common_value:.5f}")
         print()
         print(f"Average distance: {avg_distance:.5f}")
         print(f"Minimum distance: {min_distance:.5f}")
@@ -106,6 +107,25 @@ def main():
         print("*To open a link, hold down the Ctrl key")
         
         print()
+
+        # Візуалізація за допомогою Matplotlib
+        plt.style.use("dark_background")
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(points)
+        ax.set_xlabel("Samples")
+        ax.set_ylabel("Stick Value")
+        ax.set_title(f"Stick Movement Graph | {test_duration:.2f} seconds")
+        
+        # Вивід тексту під графіком
+        text_to_display = f"Stick Resolution: {most_common_value:.5f}\n" \
+                          f"Average Distance: {avg_distance:.5f}\n" \
+                          f"Minimum Distance: {min_distance:.5f}\n" \
+                          f"Maximum Distance: {max_distance:.5f}\n" \
+                          f"Number of Points: {num_points}"
+        fig.text(0.88, 0.15, text_to_display, ha="right", fontsize=10)
+        
+        plt.show()
+
         input("Press Enter to exit...")
     else:
         print("No stick movement detected.")
