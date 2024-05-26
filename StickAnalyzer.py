@@ -1,19 +1,38 @@
 # Stick resolution analyzer by John Punch
 # https://www.reddit.com/user/JohnnyPunch
-version = "1.0.9"
+version = "1.1.0"
 import pygame
 import time  # Імпортуємо модуль time для таймера
 import matplotlib.pyplot as plt  # Імпортуємо Matplotlib для візуалізації
+from colorama import Fore, Back, Style
 
 print()
-print(f"   _____ __  _      __      ___                __                     ")
-print(f"  / ___// /_(_)____/ /__   /   |  ____  ____ _/ /_  ______  ___  _____")
-print(f"  \__ \/ __/ / ___/ //_/  / /| | / __ \/ __ `/ / / / /_  / / _ \/ ___/")
-print(f" ___/ / /_/ / /__/ ,<    / ___ |/ / / / /_/ / / /_/ / / /_/  __/ /    ")
-print(f"/____/\__/_/\___/_/|_|  /_/  |_/_/ /_/\__,_/_/\__, / /___/\___/_/     ")
-print(f"                                             /____/                   ")
+print(f"░██████╗████████╗██╗░█████╗░██╗░░██╗  ░█████╗░███╗░░██╗░█████╗░██╗░░██╗░░░██╗███████╗███████╗██████╗░")
+print(f"██╔════╝╚══██╔══╝██║██╔══██╗██║░██╔╝  ██╔══██╗████╗░██║██╔══██╗██║░░╚██╗░██╔╝╚════██║██╔════╝██╔══██╗")
+print(f"╚█████╗░░░░██║░░░██║██║░░╚═╝█████═╝░  ███████║██╔██╗██║███████║██║░░░╚████╔╝░░░███╔═╝█████╗░░██████╔╝")
+print(f"░╚═══██╗░░░██║░░░██║██║░░██╗██╔═██╗░  ██╔══██║██║╚████║██╔══██║██║░░░░╚██╔╝░░██╔══╝░░██╔══╝░░██╔══██╗")
+print(f"██████╔╝░░░██║░░░██║╚█████╔╝██║░╚██╗  ██║░░██║██║░╚███║██║░░██║███████╗██║░░░███████╗███████╗██║░░██║")
+print(f"╚═════╝░░░░╚═╝░░░╚═╝░╚════╝░╚═╝░░╚═╝  ╚═╝░░╚═╝╚═╝░░╚══╝╚═╝░░╚═╝╚══════╝╚═╝░░░╚══════╝╚══════╝╚═╝░░╚═╝")
 print(f"v.{version} by John Punch")
 print()
+
+# Фільтрація нелінійних результатів руху стіку, залишаємо лише один напрямок
+def filter_noise(results):
+    if not results:
+        return []
+
+    filtered_results = [results[0]]  # Починаємо з першого значення
+
+    for i in range(1, len(results)):
+        current_value = results[i]
+        previous_values = results[:i]
+
+        # Перевірка, чи всі попередні значення менші або рівні поточному
+        # І чи поточне значення не було додано раніше
+        if current_value not in filtered_results and all(prev <= current_value for prev in previous_values):
+            filtered_results.append(current_value)
+
+    return filtered_results
 
 def main():
     pygame.init()
@@ -61,32 +80,58 @@ def main():
         end_time = time.time()  # Зберігаємо час завершення тесту
         test_duration = end_time - start_time  # Обчислюємо тривалість тесту
 
+        fpoints = filter_noise(points)  # Фільтруємо результати
+
+        # Filtered list
+        # print("\nFiltered results:")
+        # for i in range(1, len(fpoints)):
+        #     point = fpoints[i]
+        #     prev_point = fpoints[i - 1]
+        #     difference = abs(point - prev_point)
+        #     print(f"{point:.5f} [{difference:.5f}]")
+
         distances = [abs(points[i] - points[i - 1]) for i in range(1, len(points))]
-        avg_distance = sum(distances) / len(distances)
-        min_distance = min(distances)
-        max_distance = max(distances)
+        fdistances = [abs(fpoints[i] - fpoints[i - 1]) for i in range(1, len(fpoints))]
+
+        # avg_distance = sum(distances) / len(distances)
+        # min_distance = min(distances)
+        # max_distance = max(distances)
         num_points = len(points)
+        fnum_points = len(fpoints)
 
         # Знайти значення, що повторюється найчастіше
         from collections import Counter
         counts = Counter(distances)
-        most_common_value = max(counts, key=counts.get)
+        fcounts = Counter(fdistances)
+        # most_common_value = max(counts, key=counts.get)
+        fmost_common_value = max(fcounts, key=fcounts.get)
+        # avg_resolution = sum(fdistances) / len(fdistances)
+
+        tremor = 100-((100/num_points)*fnum_points)
+        if tremor <= 0:
+            tremor = 0
 
         print()
         print("TEST RESULTS:")
+        if test_duration < 3:
+            print("\033[31mWARNING:\033[0m The test duration should be at least 3 seconds! The test should be repeated!")
         print("-------------")
-        print(f"Stick resolution: {most_common_value:.5f}")
-        print()
-        print(f"Average distance: {avg_distance:.5f}")
-        print(f"Minimum distance: {min_distance:.5f}")
-        print(f"Maximum distance: {max_distance:.5f}")
-        print(f"Number of points: {num_points}")
+        # print(f"Stick resolution: {most_common_value:.5f}")
         print(f"Test duration: {test_duration:.2f} seconds")  # Виводимо тривалість тесту
+        print(f"Stick resolution: {fmost_common_value:.5f}")
+        # print(f"AVG resolution: {avg_resolution:.5f}")
+        print(f"Analog points: {fnum_points} of {num_points}")
+        print(f"Tremor: {tremor:.1f}%")
+        # print()
+        # print(f"Average distance: {avg_distance:.5f}")
+        # print(f"Minimum distance: {min_distance:.5f}")
+        # print(f"Maximum distance: {max_distance:.5f}")
+        # print()
 
         # Вивести скільки разів повторюється кожне значення у відсотках
-        total_counts = sum(counts.values())
+        total_counts = sum(fcounts.values())
         print("\nTop 5 Value Occurrences:")
-        for i, (value, count) in enumerate(sorted(counts.items(), key=lambda x: x[1], reverse=True)):
+        for i, (value, count) in enumerate(sorted(fcounts.items(), key=lambda x: x[1], reverse=True)):
             if i < 5:  # Виводимо лише перші 5 значень
                 percentage = (count / total_counts) * 100
                 print(f"{value:.5f}: {count} ({percentage:.2f}%)")
@@ -117,12 +162,17 @@ def main():
         ax.set_title(f"Stick Movement Graph | {test_duration:.2f} seconds")
         
         # Вивід тексту під графіком
-        text_to_display = f"Stick Resolution: {most_common_value:.5f}\n" \
-                          f"Average Distance: {avg_distance:.5f}\n" \
-                          f"Minimum Distance: {min_distance:.5f}\n" \
-                          f"Maximum Distance: {max_distance:.5f}\n" \
-                          f"Number of Points: {num_points}"
+        # text_to_display = f"Stick Resolution: {most_common_value:.5f}\n" \
+        text_to_display = f"Stick Resolution: {fmost_common_value:.5f}\n" \
+                          f"Program Points: {num_points}\n" \
+                          f"Analog Points: {fnum_points}\n" \
+                          f"Tremor: {tremor:.1f}%\n" \
+                          f"Test Duration: {test_duration:.2f}"
         fig.text(0.88, 0.15, text_to_display, ha="right", fontsize=10)
+
+        # f"Average Distance: {avg_distance:.5f}\n" \
+        # f"Minimum Distance: {min_distance:.5f}\n" \
+        # f"Maximum Distance: {max_distance:.5f}\n" \
         
         plt.show()
 
