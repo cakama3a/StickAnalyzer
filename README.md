@@ -3,7 +3,7 @@ Stick Analyzer is a specialized utility for analyzing and evaluating joystick st
 Download: https://github.com/cakama3a/StickAnalyzer/tree/main/dist  
 Author Support: https://ko-fi.com/gamepadla  
 
-![image](https://github.com/cakama3a/StickAnalyzer/assets/15096106/e28ba88c-bdcf-4d6e-9cc2-20ca035b6a6a)
+<img width="732" alt="anlzr" src="https://github.com/cakama3a/StickAnalyzer/assets/15096106/5c22cccb-900a-4c08-96b2-0f63ebb377b6">
 
 Key features of Stick Analyzer:
 
