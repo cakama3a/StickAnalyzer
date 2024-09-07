@@ -1,6 +1,6 @@
 # Stick resolution analyzer by John Punch
 # https://www.reddit.com/user/JohnnyPunch
-version = "1.6.3"
+version = "1.6.4"
 import pygame
 import time
 import math
@@ -190,7 +190,7 @@ def visualize_stick_movement(screen, joystick, positions, stop_event, countdown_
                     screen.blit(s, (pos[0] - 5, pos[1] - 5))
 
                 # Виведення координат в консоль
-                print(f"Stick position: X = {x:.3f}, Y = {y:.3f}")
+                # print(f"Stick position: X = {x:.3f}, Y = {y:.3f}")
 
             # Завершення тесту, коли стік досягає значення 0.99 на будь-якій осі
             if abs(x) >= 0.99 or abs(y) >= 0.99:
@@ -239,8 +239,6 @@ def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5
         if abs(x) < 0.1 and abs(y) < 0.1:
             stick_centered = True
             print("Stick is centered. Starting movement detection.")
-        else:
-            print(f"Waiting for stick to return to center. Current position: X = {x:.3f}, Y = {y:.3f}")
         
         pygame.time.wait(10)  # Замість time.sleep використовуємо Pygame-затримку для плавного виконання
 
@@ -258,9 +256,11 @@ def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5
 
         # Збір даних руху стіку
         if abs(x) >= 0.1 and x != prev_x:
-            points.append(abs(x))  # Збереження значення стіку
-            print(f"Stick movement: {abs(x):.5f}")
+            distance = abs(x - prev_x)
             prev_x = x
+            points.append(abs(x))  # Збереження значення стіку
+            if abs(x) != 1.0:  # Щоб уникнути виведення для 1.0
+                print(f"{abs(x):.5f} [{distance:.4f}]")
 
         if abs(x) >= 0.99:
             running = False
@@ -268,7 +268,6 @@ def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5
     end_time = time.time() if points else None
     stop_event.set()
     return points, start_time, end_time
-
 
 def analyze_results(points, start_time, end_time):
     if not points:
