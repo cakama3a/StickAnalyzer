@@ -34,6 +34,20 @@ def init_joystick():
     joystick.init()
     return joystick
 
+def choose_stick():
+    print("Please select which stick to use:")
+    print("1. Left stick")
+    print("2. Right stick")
+    
+    choice = input("Enter 1 or 2: ").strip()
+    if choice == '1':
+        return 0, 1  # Лівий стік: осі 0 (X) і 1 (Y)
+    elif choice == '2':
+        return 2, 3  # Правий стік: осі 2 (X) і 3 (Y)
+    else:
+        print("Invalid choice, defaulting to left stick.")
+        return 0, 1
+
 def filter_noise(results):
     if not results:
         return []
@@ -47,91 +61,190 @@ def filter_noise(results):
 
     return filtered_results
 
-def visualize_stick_movement(screen, joystick, positions, stop_event, countdown_duration=5, guide_radius=100, guide_duration=10, guide_size=12):
+def visualize_stick_movement(screen, joystick, positions, stop_event, countdown_duration=5, guide_radius=100, guide_duration=10, guide_size=12, x_axis=0, y_axis=1):
     center = (320, 240)
     font_large = pygame.font.Font(None, 72)
     font_small = pygame.font.Font(None, 24)
     font_coords = pygame.font.Font(None, 36)
-    start_time = time.time()
+    calibration_rounds = 0  # Лічильник обертів стіку
+    calibration_completed = False
+    stick_centered = False
+    guide_phase_started = False
+    guide_visible = False
+    movement_started = False  # Прапор для початку збору координат
+    threshold_reached = False  # Для фіксації проходження порогового значення
+    upper_threshold_reached = False  # Ініціалізуємо змінну
+    lower_threshold_reached = False  # Ініціалізуємо змінну
+    guide_delay = 3  # Затримка перед появою гіда після підготовки
+    guide_x = center[0]
+    guide_stopped = False  # Прапор для зупинки гіда на краю
+    test_completed = False  # Прапор для завершення тесту
+    result_shown = False  # Прапор для виведення результату лише один раз
 
     while not stop_event.is_set():
         current_time = time.time()
-        elapsed_time = current_time - start_time
-        
         screen.fill((30, 30, 30))
+
+        # Малюємо коло для калібрування
         pygame.draw.circle(screen, (200, 200, 200), center, guide_radius, 1)
         pygame.draw.line(screen, (200, 200, 200), (center[0] - guide_radius, center[1]), (center[0] + guide_radius, center[1]), 1)
         pygame.draw.line(screen, (200, 200, 200), (center[0], center[1] - guide_radius), (center[0], center[1] + guide_radius), 1)
 
-        # Countdown
-        if elapsed_time < countdown_duration:
-            countdown = countdown_duration - int(elapsed_time)
-            countdown_text = font_large.render(str(countdown), True, (255, 255, 255))
-            countdown_rect = countdown_text.get_rect(center=center)
-            screen.blit(countdown_text, countdown_rect)
+        x = joystick.get_axis(x_axis)
+        y = joystick.get_axis(y_axis)
 
-            instruction_text = "Rotate the stick 3 times clockwise and release it."
+        # Малюємо вказівник стіку під час калібрування
+        stick_position = (center[0] + int(x * guide_radius), center[1] + int(y * guide_radius))
+        pygame.draw.line(screen, (0, 150, 255), center, stick_position, 2)
+        pygame.draw.circle(screen, (157, 32, 96), stick_position, 5)
+
+        if not calibration_completed:
+            # Калібрування (відображаємо тільки текст і каунтер)
+            instruction_text = "Rotate the stick 3 times clockwise."
             instruction_rendered = font_small.render(instruction_text, True, (255, 255, 255))
             instruction_rect = instruction_rendered.get_rect(center=(center[0], center[1] - 140))
             screen.blit(instruction_rendered, instruction_rect)
-        else:
-            # Guide animation
-            guide_elapsed_time = elapsed_time - countdown_duration
-            if guide_elapsed_time <= guide_duration:
-                guide_x = center[0] - int((guide_elapsed_time / guide_duration) * guide_radius)
-                guide_surface = pygame.Surface((guide_size * 2, guide_size * 2), pygame.SRCALPHA)
-                pygame.draw.circle(guide_surface, (255, 255, 255, 128), (guide_size, guide_size), guide_size, 2)
-                screen.blit(guide_surface, (guide_x - guide_size, center[1] - guide_size))
 
-                # Add the new instruction text
-                guide_instruction_text = "Move the left stick according to the guide"
-                guide_instruction_rendered = font_small.render(guide_instruction_text, True, (255, 255, 255))
-                guide_instruction_rect = guide_instruction_rendered.get_rect(center=(center[0], center[1] + 140))
-                screen.blit(guide_instruction_rendered, guide_instruction_rect)
+            # Логіка обертів: Фіксуємо оберти на координатах Y >= 0.92 і Y <= -0.92
+            if y >= 0.92:
+                upper_threshold_reached = True
+            if y <= -0.92 and upper_threshold_reached:
+                lower_threshold_reached = True
 
-            x_axis = joystick.get_axis(0)
-            y_axis = joystick.get_axis(1)
+            if upper_threshold_reached and lower_threshold_reached:
+                calibration_rounds += 1
+                upper_threshold_reached = False
+                lower_threshold_reached = False
+                print(f"Calibration round {calibration_rounds}")
 
-            stick_position = (center[0] + int(x_axis * guide_radius), center[1] + int(y_axis * guide_radius))
-            pygame.draw.line(screen, (0, 150, 255), center, stick_position, 2)
-            pygame.draw.circle(screen, (157, 32, 96), stick_position, 5)
-            
-            positions.append((stick_position, current_time))
-            positions[:] = [(pos, t) for pos, t in positions if current_time - t <= 5]
-            
-            for pos, t in positions:
-                alpha = max(0, 255 - int((current_time - t) * 255 / 5))
-                color = (0, 0, 255, alpha)
-                s = pygame.Surface((10, 10), pygame.SRCALPHA)
-                pygame.draw.circle(s, color, (5, 5), 2)
-                screen.blit(s, (pos[0] - 5, pos[1] - 5))
+            # Відображаємо каунтер обертів
+            rounds_left = max(0, 3 - calibration_rounds)
+            counter_text = font_large.render(str(rounds_left), True, (255, 255, 255))
+            counter_rect = counter_text.get_rect(center=center)
+            screen.blit(counter_text, counter_rect)
 
-            coords_text = f"X: {x_axis:.3f}, Y: {y_axis:.3f}"
+            if calibration_rounds >= 3:
+                calibration_completed = True
+                stick_centered = False  # Переходимо до перевірки на центральну позицію стіку
+                continue
+
+        elif not stick_centered:
+            # Повернення стіку в центральну позицію
+            instruction_text = "Return the stick to the center."
+            instruction_rendered = font_small.render(instruction_text, True, (255, 255, 255))
+            instruction_rect = instruction_rendered.get_rect(center=(center[0], center[1] - 140))
+            screen.blit(instruction_rendered, instruction_rect)
+
+            if abs(x) < 0.1 and abs(y) < 0.1:
+                stick_centered = True
+                start_time = time.time()  # Встановлюємо таймер для затримки перед початком другого етапу
+                continue
+
+        elif not guide_phase_started and stick_centered:
+            # Затримка перед початком другого етапу після того, як стік повернувся в центр
+            if time.time() - start_time >= guide_delay:
+                guide_phase_started = True
+                guide_visible = True
+                movement_started = True  # Активуємо збір координат
+                positions.clear()  # Очищуємо попередні позиції перед другим етапом
+                start_time = time.time()  # Перезапускаємо час для руху гіда
+                continue
+            else:
+                instruction_text = "Get ready to follow the guide."
+                instruction_rendered = font_small.render(instruction_text, True, (255, 255, 255))
+                instruction_rect = instruction_rendered.get_rect(center=(center[0], center[1] - 140))
+                screen.blit(instruction_rendered, instruction_rect)
+
+        elif guide_visible and not test_completed:
+            # Відображаємо гіда і рухаємо його з центру до лівого краю
+            instruction_text = "Follow the guide"
+            instruction_rendered = font_small.render(instruction_text, True, (255, 255, 255))
+            instruction_rect = instruction_rendered.get_rect(center=(center[0], center[1] - 140))
+            screen.blit(instruction_rendered, instruction_rect)
+
+            # Рух гіда з центру до лівого краю
+            linear_elapsed_time = time.time() - start_time
+            guide_x = center[0] - int((linear_elapsed_time / guide_duration) * guide_radius)
+
+            # Малюємо гід
+            pygame.draw.circle(screen, (255, 255, 255), (guide_x, center[1]), guide_size, 2)
+
+            # Перевіряємо, чи досяг стік порогового значення
+            if movement_started and (abs(x) >= 0.1 or abs(y) >= 0.1):
+                threshold_reached = True  # Встановлюємо прапор досягнення порогу
+
+            if threshold_reached:
+                # Збираємо дані стіку під час руху за гідом
+                stick_position = (center[0] + int(x * guide_radius), center[1] + int(y * guide_radius))
+                pygame.draw.line(screen, (0, 150, 255), center, stick_position, 2)
+                pygame.draw.circle(screen, (157, 32, 96), stick_position, 5)
+
+                positions.append((stick_position, current_time))  # Записуємо позиції під час руху
+                positions[:] = [(pos, t) for pos, t in positions if current_time - t <= 5]
+
+                for pos, t in positions:
+                    alpha = max(0, 255 - int((current_time - t) * 255 / 5))
+                    color = (0, 0, 255, alpha)
+                    s = pygame.Surface((10, 10), pygame.SRCALPHA)
+                    pygame.draw.circle(s, color, (5, 5), 2)
+                    screen.blit(s, (pos[0] - 5, pos[1] - 5))
+
+                # Виведення координат в консоль
+                print(f"Stick position: X = {x:.3f}, Y = {y:.3f}")
+
+            # Завершення тесту, коли стік досягає значення 0.99 на будь-якій осі
+            if abs(x) >= 0.99 or abs(y) >= 0.99:
+                test_completed = True  # Завершуємо тест
+
+            coords_text = f"X: {x:.3f}, Y: {y:.3f}"
             coords_rendered = font_coords.render(coords_text, True, (255, 255, 255))
             screen.blit(coords_rendered, (10, 10))
-        
-        pygame.display.flip()
-        pygame.time.wait(10)  # Додаємо невелику затримку, щоб зменшити навантаження на процесор
 
-def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5):
+        # Після завершення тесту, гід залишається видимим
+        if test_completed and not result_shown:
+            pygame.draw.circle(screen, (255, 255, 255), (guide_x, center[1]), guide_size, 2)
+            # Виведення результату тесту в консоль лише один раз
+            print("Test completed: Stick reached boundary position.")
+            result_shown = True  # Встановлюємо прапор, щоб результат виводився лише один раз
+            # Викликаємо функцію аналізу результатів
+            stop_event.set()  # Зупиняємо подальші дії
+            return  # Виходимо з функції
+
+        pygame.display.flip()
+        pygame.time.wait(10)
+
+def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5, x_axis=0, y_axis=1):
     points = []
     prev_x = 0.0
     start_time = None
     running = True
+    threshold_reached = False
+    calibration_completed = False  # Додамо прапор для завершення калібрування
 
     print("---")
-    print(f"Start slowly moving the left stick of the gamepad to the side")
+    print(f"Please switch to the program window and follow the guide's instructions")
     print()
-
-    # Відлік часу перед початком тесту
+    
     countdown_start_time = time.time()
     while time.time() - countdown_start_time < countdown_duration:
         pygame.event.pump()
 
     while running and not stop_event.is_set():
         pygame.event.pump()
-        x = joystick.get_axis(0)
-        
+        x = joystick.get_axis(x_axis)
+
+        # Переконаємося, що збір даних активується тільки після калібрування
+        if not calibration_completed:
+            continue  # Продовжуємо чекати завершення калібрування
+
+        if not threshold_reached:
+            # Чекаємо, поки стік не досягне значень -0.1 або 0.1
+            if abs(x) >= 0.1:
+                threshold_reached = True
+                start_time = time.time()  # Відлік часу починається, коли стік досягне порогових значень
+            else:
+                continue  # Не починаємо збирати точки до досягнення порогу
+
         if x != 0.0 and x != prev_x:
             if prev_x == 0.0:
                 prev_x = x
@@ -151,6 +264,7 @@ def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5
     end_time = time.time() if points else None
     stop_event.set()
     return points, start_time, end_time
+
 
 def analyze_results(points, start_time, end_time):
     if not points:
@@ -229,6 +343,8 @@ def main():
     if joystick is None:
         return
 
+    x_axis, y_axis = choose_stick()  # Отримання осей для вибраного стіку
+
     positions = []
     stop_event = Event()
     guide_size = 8  # Розмір гіда
@@ -238,10 +354,10 @@ def main():
 
     screen = pygame.display.set_mode((640, 480))
     pygame.display.set_caption("Test 1: Linear test")
-    visualization_thread = Thread(target=visualize_stick_movement, args=(screen, joystick, positions, stop_event, countdown_duration, guide_radius, guide_duration, guide_size))
+    visualization_thread = Thread(target=visualize_stick_movement, args=(screen, joystick, positions, stop_event, countdown_duration, guide_radius, guide_duration, guide_size, x_axis, y_axis))
     visualization_thread.start()
     
-    points, start_time, end_time = measure_stick_movement(joystick, positions, stop_event, countdown_duration)
+    points, start_time, end_time = measure_stick_movement(joystick, positions, stop_event, countdown_duration, x_axis, y_axis)
     visualization_thread.join()
 
     pygame.quit()  # Закриття вікна візуалізації стіку
