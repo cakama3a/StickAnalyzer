@@ -1,6 +1,6 @@
 # Stick resolution analyzer by John Punch
 # https://www.reddit.com/user/JohnnyPunch
-version = "1.6.1"
+version = "1.6.3"
 import pygame
 import time
 import math
@@ -219,44 +219,48 @@ def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5
     start_time = None
     running = True
     threshold_reached = False
-    calibration_completed = False  # Додамо прапор для завершення калібрування
+    stick_centered = False  # Прапор для перевірки, чи стік у центрі
 
     print("---")
     print(f"Please switch to the program window and follow the guide's instructions")
     print()
-    
+
     countdown_start_time = time.time()
     while time.time() - countdown_start_time < countdown_duration:
         pygame.event.pump()
+
+    # Після завершення калібрування чекаємо повернення стіку в центральне положення
+    while not stick_centered and not stop_event.is_set():
+        pygame.event.pump()  # Обробка подій Pygame для уникнення зависання
+        x = joystick.get_axis(x_axis)
+        y = joystick.get_axis(y_axis)
+        
+        # Чекаємо, поки стік не повернеться в центр (X, Y має бути близьким до 0)
+        if abs(x) < 0.1 and abs(y) < 0.1:
+            stick_centered = True
+            print("Stick is centered. Starting movement detection.")
+        else:
+            print(f"Waiting for stick to return to center. Current position: X = {x:.3f}, Y = {y:.3f}")
+        
+        pygame.time.wait(10)  # Замість time.sleep використовуємо Pygame-затримку для плавного виконання
 
     while running and not stop_event.is_set():
         pygame.event.pump()
         x = joystick.get_axis(x_axis)
 
-        # Переконаємося, що збір даних активується тільки після калібрування
-        if not calibration_completed:
-            continue  # Продовжуємо чекати завершення калібрування
+        # Чекаємо, поки стік не досягне значень -0.1 або 0.1
+        if not threshold_reached and abs(x) >= 0.1:
+            threshold_reached = True
+            start_time = time.time()  # Відлік часу починається, коли стік досягне порогових значень
+            print(f"Threshold reached: X = {x:.3f}")
+        elif not threshold_reached:
+            continue  # Не починаємо збирати точки до досягнення порогу
 
-        if not threshold_reached:
-            # Чекаємо, поки стік не досягне значень -0.1 або 0.1
-            if abs(x) >= 0.1:
-                threshold_reached = True
-                start_time = time.time()  # Відлік часу починається, коли стік досягне порогових значень
-            else:
-                continue  # Не починаємо збирати точки до досягнення порогу
-
-        if x != 0.0 and x != prev_x:
-            if prev_x == 0.0:
-                prev_x = x
-                points.append(abs(x))  # Збереження значення стіку
-                print(f"{abs(x):.5f}")
-                start_time = time.time()
-            else:
-                distance = abs(x - prev_x)
-                prev_x = x
-                points.append(abs(x))  # Збереження значення стіку
-                if abs(x) != 1.0:
-                    print(f"{abs(x):.5f} [{distance:.4f}]")
+        # Збір даних руху стіку
+        if abs(x) >= 0.1 and x != prev_x:
+            points.append(abs(x))  # Збереження значення стіку
+            print(f"Stick movement: {abs(x):.5f}")
+            prev_x = x
 
         if abs(x) >= 0.99:
             running = False
@@ -268,10 +272,15 @@ def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5
 
 def analyze_results(points, start_time, end_time):
     if not points:
+        print("No valid points detected for analysis.")
         return
 
     test_duration = end_time - start_time
     fpoints = filter_noise(points)
+
+    if not fpoints:
+        print("No filtered points available for analysis.")
+        return
 
     distances = [abs(points[i] - points[i - 1]) for i in range(1, len(points))]
     fdistances = [abs(fpoints[i] - fpoints[i - 1]) for i in range(1, len(fpoints))]
