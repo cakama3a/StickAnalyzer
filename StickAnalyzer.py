@@ -162,9 +162,13 @@ def visualize_stick_movement(screen, joystick, positions, stop_event, countdown_
             instruction_rect = instruction_rendered.get_rect(center=(center[0], center[1] - 140))
             screen.blit(instruction_rendered, instruction_rect)
 
-            # Рух гіда з центру до лівого краю
+            # Рух гіда з центру до лівого краю (візуальне супроводження)
             linear_elapsed_time = time.time() - start_time
             guide_x = center[0] - int((linear_elapsed_time / guide_duration) * guide_radius)
+
+            # Перевіряємо, щоб гід не рухався за межі кола
+            if guide_x < center[0] - guide_radius:
+                guide_x = center[0] - guide_radius
 
             # Малюємо гід
             pygame.draw.circle(screen, (255, 255, 255), (guide_x, center[1]), guide_size, 2)
@@ -188,9 +192,6 @@ def visualize_stick_movement(screen, joystick, positions, stop_event, countdown_
                     s = pygame.Surface((10, 10), pygame.SRCALPHA)
                     pygame.draw.circle(s, color, (5, 5), 2)
                     screen.blit(s, (pos[0] - 5, pos[1] - 5))
-
-                # Виведення координат в консоль
-                # print(f"Stick position: X = {x:.3f}, Y = {y:.3f}")
 
             # Завершення тесту, коли стік досягає значення 0.99 на будь-якій осі
             if abs(x) >= 0.99 or abs(y) >= 0.99:
