@@ -1,6 +1,10 @@
 # Stick resolution analyzer by John Punch
 # https://www.reddit.com/user/JohnnyPunch
 version = "1.6.4"
+
+# Глобальна змінна для порогу руху стіку
+THRESHOLD = 0.05
+
 import pygame
 import time
 import math
@@ -135,7 +139,7 @@ def visualize_stick_movement(screen, joystick, positions, stop_event, countdown_
             instruction_rect = instruction_rendered.get_rect(center=(center[0], center[1] - 140))
             screen.blit(instruction_rendered, instruction_rect)
 
-            if abs(x) < 0.1 and abs(y) < 0.1:
+            if abs(x) < THRESHOLD and abs(y) < THRESHOLD:
                 stick_centered = True
                 start_time = time.time()  # Встановлюємо таймер для затримки перед початком другого етапу
                 continue
@@ -174,7 +178,7 @@ def visualize_stick_movement(screen, joystick, positions, stop_event, countdown_
             pygame.draw.circle(screen, (255, 255, 255), (guide_x, center[1]), guide_size, 2)
 
             # Перевіряємо, чи досяг стік порогового значення
-            if movement_started and (abs(x) >= 0.1 or abs(y) >= 0.1):
+            if movement_started and (abs(x) >= THRESHOLD or abs(y) >= THRESHOLD):
                 threshold_reached = True  # Встановлюємо прапор досягнення порогу
 
             if threshold_reached:
@@ -237,7 +241,7 @@ def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5
         y = joystick.get_axis(y_axis)
         
         # Чекаємо, поки стік не повернеться в центр (X, Y має бути близьким до 0)
-        if abs(x) < 0.1 and abs(y) < 0.1:
+        if abs(x) < THRESHOLD and abs(y) < THRESHOLD:
             stick_centered = True
             print("Stick is centered. Starting movement detection.")
         
@@ -248,7 +252,7 @@ def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5
         x = joystick.get_axis(x_axis)
 
         # Чекаємо, поки стік не досягне значень -0.1 або 0.1
-        if not threshold_reached and abs(x) >= 0.1:
+        if not threshold_reached and abs(x) >= THRESHOLD:
             threshold_reached = True
             start_time = time.time()  # Відлік часу починається, коли стік досягне порогових значень
             print(f"Threshold reached: X = {x:.3f}")
@@ -256,7 +260,7 @@ def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5
             continue  # Не починаємо збирати точки до досягнення порогу
 
         # Збір даних руху стіку
-        if abs(x) >= 0.1 and x != prev_x:
+        if abs(x) >= THRESHOLD and x != prev_x:
             distance = abs(x - prev_x)
             prev_x = x
             points.append(abs(x))  # Збереження значення стіку
