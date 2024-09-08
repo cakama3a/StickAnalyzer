@@ -4,6 +4,7 @@ version = "1.6.4"
 
 # Глобальна змінна для порогу руху стіку
 THRESHOLD = 0.05
+calibration_completed = False  # Додаємо цю змінну
 
 import pygame
 import time
@@ -66,12 +67,12 @@ def filter_noise(results):
     return filtered_results
 
 def visualize_stick_movement(screen, joystick, positions, stop_event, countdown_duration=5, guide_radius=100, guide_duration=10, guide_size=12, x_axis=0, y_axis=1):
+    global calibration_completed
     center = (320, 240)
     font_large = pygame.font.Font(None, 72)
     font_small = pygame.font.Font(None, 24)
     font_coords = pygame.font.Font(None, 36)
     calibration_rounds = 0  # Лічильник обертів стіку
-    calibration_completed = False
     stick_centered = False
     guide_phase_started = False
     guide_visible = False
@@ -132,7 +133,7 @@ def visualize_stick_movement(screen, joystick, positions, stop_event, countdown_
                 stick_centered = False  # Переходимо до перевірки на центральну позицію стіку
                 continue
 
-        elif not stick_centered:
+        elif not stick_centered and calibration_completed:
             # Повернення стіку в центральну позицію
             instruction_text = "Return the stick to the center."
             instruction_rendered = font_small.render(instruction_text, True, (255, 255, 255))
@@ -219,6 +220,7 @@ def visualize_stick_movement(screen, joystick, positions, stop_event, countdown_
         pygame.time.wait(10)
 
 def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5, x_axis=0, y_axis=1):
+    global calibration_completed
     points = []
     prev_x = 0.0
     start_time = None
@@ -235,13 +237,13 @@ def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5
         pygame.event.pump()
 
     # Після завершення калібрування чекаємо повернення стіку в центральне положення
-    while not stick_centered and not stop_event.is_set():
+    while not calibration_completed or (not stick_centered and not stop_event.is_set()):
         pygame.event.pump()  # Обробка подій Pygame для уникнення зависання
         x = joystick.get_axis(x_axis)
         y = joystick.get_axis(y_axis)
         
         # Чекаємо, поки стік не повернеться в центр (X, Y має бути близьким до 0)
-        if abs(x) < THRESHOLD and abs(y) < THRESHOLD:
+        if abs(x) < THRESHOLD and abs(y) < THRESHOLD and calibration_completed:
             stick_centered = True
             print("Stick is centered. Starting movement detection.")
         
