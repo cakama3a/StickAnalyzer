@@ -1,6 +1,6 @@
 # Stick resolution analyzer by John Punch
 # https://www.reddit.com/user/JohnnyPunch
-version = "1.7.1"
+version = "1.7.1.1"
 
 # Глобальна змінна для порогу руху стіку
 THRESHOLD = 0.05
@@ -21,7 +21,8 @@ print(f"╚█████╗░░░░██║░░░██║██║░
 print(f"░╚═══██╗░░░██║░░░██║██║░░██╗██╔═██╗░  ██╔══██║██║╚████║██╔══██║██║░░░░╚██╔╝░░██╔══╝░░██╔══╝░░██╔══██╗")
 print(f"██████╔╝░░░██║░░░██║╚█████╔╝██║░╚██╗  ██║░░██║██║░╚███║██║░░██║███████╗██║░░░███████╗███████╗██║░░██║")
 print(f"╚═════╝░░░░╚═╝░░░╚═╝░╚════╝░╚═╝░░╚═╝  ╚═╝░░╚═╝╚═╝░░╚══╝╚═╝░░╚═╝╚══════╝╚═╝░░░╚══════╝╚══════╝╚═╝░░╚═╝")
-print(f"v.{version} by John Punch")
+print(f"v.{version} by John Punch (https://gamepadla.com)")
+print(f"Support the project: https://ko-fi.com/gamepadla")
 print()
 
 def init_joystick():
@@ -330,6 +331,7 @@ def visualize_results(points, fpoints, test_duration, resolution, num_points, fn
 
     text_to_display = f"Program Points: {num_points}\n" \
                       f"Analog Points: {fnum_points}\n" \
+                      f"Step Res.: {avg_step_resolution:.5f}\n" \
                       f"Tremor: {tremor:.1f}%\n"
     fig.text(0.88, 0.15, text_to_display, ha="right", fontsize=10)
     
