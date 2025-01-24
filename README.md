@@ -1,6 +1,6 @@
 Stick Analyzer is a specialized utility for analyzing and evaluating joystick stick resolution. This program allows users to accurately measure and track the level of detail in joystick motion, which is critical to maximize accuracy and responsiveness in games or applications that require high input resolution.  
 
-Download: https://github.com/cakama3a/StickAnalyzer/tree/main/dist  
+Guide: [How to use Stick Analyzer](https://www.reddit.com/r/Controller/comments/1i831jw/stick_analyzer_complete_guide_to_gamepad_stick/)  
 Author Support: https://ko-fi.com/gamepadla  
 
 <img width="732" alt="anlzr" src="https://github.com/cakama3a/StickAnalyzer/assets/15096106/5c22cccb-900a-4c08-96b2-0f63ebb377b6">
