@@ -1,11 +1,3 @@
-# Stick resolution analyzer by John Punch
-# https://www.reddit.com/user/JohnnyPunch
-version = "1.7.1.1"
-
-# Глобальна змінна для порогу руху стіку
-THRESHOLD = 0.05
-calibration_completed = False
-
 import pygame
 import time
 import math
@@ -13,17 +5,83 @@ import matplotlib.pyplot as plt
 from colorama import Fore, Back, Style
 from collections import Counter
 from threading import Thread, Event
+import requests
+import json
+import uuid
+from datetime import datetime
+import os
 
-print()
-print(f"░██████╗████████╗██╗░█████╗░██╗░░██╗  ░█████╗░███╗░░██╗░█████╗░██╗░░██╗░░░██╗███████╗███████╗██████╗░")
-print(f"██╔════╝╚══██╔══╝██║██╔══██╗██║░██╔╝  ██╔══██╗████╗░██║██╔══██╗██║░░╚██╗░██╔╝╚════██║██╔════╝██╔══██╗")
-print(f"╚█████╗░░░░██║░░░██║██║░░╚═╝█████═╝░  ███████║██╔██╗██║███████║██║░░░╚████╔╝░░░███╔═╝█████╗░░██████╔╝")
-print(f"░╚═══██╗░░░██║░░░██║██║░░██╗██╔═██╗░  ██╔══██║██║╚████║██╔══██║██║░░░░╚██╔╝░░██╔══╝░░██╔══╝░░██╔══██╗")
-print(f"██████╔╝░░░██║░░░██║╚█████╔╝██║░╚██╗  ██║░░██║██║░╚███║██║░░██║███████╗██║░░░███████╗███████╗██║░░██║")
-print(f"╚═════╝░░░░╚═╝░░░╚═╝░╚════╝░╚═╝░░╚═╝  ╚═╝░░╚═╝╚═╝░░╚══╝╚═╝░░╚═╝╚══════╝╚═╝░░░╚══════╝╚══════╝╚═╝░░╚═╝")
-print(f"v.{version} by John Punch (https://gamepadla.com)")
-print(f"Support the project: https://ko-fi.com/gamepadla")
-print()
+version = "1.7.1.1"
+
+# Глобальна змінна для порогу руху стіку
+THRESHOLD = 0.05
+calibration_completed = False
+
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def print_logo():
+    print()
+    print(f"░██████╗████████╗██╗░█████╗░██╗░░██╗  ░█████╗░███╗░░██╗░█████╗░██╗░░██╗░░░██╗███████╗███████╗██████╗░")
+    print(f"██╔════╝╚══██╔══╝██║██╔══██╗██║░██╔╝  ██╔══██╗████╗░██║██╔══██╗██║░░╚██╗░██╔╝╚════██║██╔════╝██╔══██╗")
+    print(f"╚█████╗░░░░██║░░░██║██║░░╚═╝█████═╝░  ███████║██╔██╗██║███████║██║░░░╚████╔╝░░░███╔═╝█████╗░░██████╔╝")
+    print(f"░╚═══██╗░░░██║░░░██║██║░░██╗██╔═██╗░  ██╔══██║██║╚████║██╔══██║██║░░░░╚██╔╝░░██╔══╝░░██╔══╝░░██╔══██╗")
+    print(f"██████╔╝░░░██║░░░██║╚█████╔╝██║░╚██╗  ██║░░██║██║░╚███║██║░░██║███████╗██║░░░███████╗███████╗██║░░██║")
+    print(f"╚═════╝░░░░╚═╝░░░╚═╝░╚════╝░╚═╝░░╚═╝  ╚═╝░░╚═╝╚═╝░░╚══╝╚═╝░░╚═╝╚══════╝╚═╝░░░╚══════╝╚══════╝╚═╝░░╚═╝")
+    print(f"v.{version} by John Punch (https://gamepadla.com)")
+    print(f"Support the project: https://ko-fi.com/gamepadla")
+    print()
+
+def get_controller_info():
+    print("\nPlease provide information about your controller below")
+    print("---\n")
+
+    # Get controller name
+    controller_name = input("Enter the full official name of your controller (As it is called on the Gamepadla.com website, if there are): ").strip()
+    
+    # Get connection type
+    while True:
+        print("\nHow is the controller connected?")
+        print("1. Cable")
+        print("2. Bluetooth")
+        print("3. Wireless Receiver")
+        connection = input("Enter choice (1-3): ").strip()
+        if connection in ['1', '2', '3']:
+            connection_types = {
+                '1': 'Cable',
+                '2': 'Bluetooth',
+                '3': 'Wireless Receiver'
+            }
+            connection = connection_types[connection]
+            break
+        print("Invalid choice. Please try again.")
+    
+    # Get controller mode
+    while True:
+        print("\nWhat mode is the controller in?")
+        print("1. XInput")
+        print("2. DirectInput")
+        print("3. Switch")
+        print("4. Other")
+        mode = input("Enter choice (1-4): ").strip()
+        if mode in ['1', '2', '3', '4']:
+            mode_types = {
+                '1': 'XInput',
+                '2': 'DirectInput',
+                '3': 'Switch',
+                '4': 'Other'
+            }
+            mode = mode_types[mode]
+            if mode == 'Other':
+                mode = input("Please specify the mode: ").strip()
+            break
+        print("Invalid choice. Please try again.")
+    
+    return {
+        'name': controller_name,
+        'connection': connection,
+        'mode': mode
+    }
 
 def init_joystick():
     pygame.init()
@@ -47,9 +105,9 @@ def choose_stick():
     
     choice = input("Enter 1 or 2: ").strip()
     if choice == '1':
-        return 0, 1  # Лівий стік: осі 0 (X) і 1 (Y)
+        return 0, 1  # Left stick: axes 0 (X) and 1 (Y)
     elif choice == '2':
-        return 2, 3  # Правий стік: осі 2 (X) і 3 (Y)
+        return 2, 3  # Right stick: axes 2 (X) and 3 (Y)
     else:
         print("Invalid choice, defaulting to left stick.")
         return 0, 1
@@ -256,6 +314,82 @@ def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5
     stop_event.set()
     return points, start_time, end_time
 
+def generate_test_id():
+    # Generate a unique test ID
+    return str(uuid.uuid4())
+
+def prepare_test_data(points, test_duration, resolution, num_points, fnum_points, tremor, avg_step_resolution, stick_resolution, controller_info):
+    # Prepare test data for server submission
+    return {
+        "lin_test": True,
+        "test_key2": generate_test_id(),
+        "method": "LIN",
+        "version": version,
+        "name": controller_info['name'],
+        "connection": controller_info['connection'],
+        "driver": controller_info['mode'],
+        "all_stats": {
+            "duration": test_duration,
+            "min_resolution": resolution,
+            "avg_resolution": avg_step_resolution,
+            "total_points": num_points,
+            "analog_points": fnum_points,
+            "tremor": tremor,
+            "stick_resolution": stick_resolution
+        },
+        "all_delays": points
+    }
+
+def submit_test_results(data):
+    # Submit test results to the server
+    url = "https://gamepadla.com/scripts/poster.php"
+    
+    # Convert data to JSON strings
+    data['all_stats'] = json.dumps(data['all_stats'])
+    data['all_delays'] = json.dumps(data['all_delays'])
+    
+    try:
+        response = requests.post(url, data=data)
+        if response.status_code == 200:
+            print("\nTest results successfully submitted to gamepadla.com")
+            print("If the test passes verification and meets the criteria, it will be added to the controller's page.")
+            print(f"Test ID: {data['test_key2']}")
+            return True
+        else:
+            print(f"\nFailed to submit results. Status code: {response.status_code}")
+            return False
+    except Exception as e:
+        print(f"\nError submitting results: {str(e)}")
+        return False
+
+def save_results(points):
+    with open("stick_data.txt", "w") as file:
+        data_str = ' '.join(f".{point*100000:05.0f}" for point in points)
+        file.write(data_str)
+    print("\nData saved to stick_data.txt")
+
+def visualize_results(points, fpoints, test_duration, resolution, num_points, fnum_points, tremor, avg_step_resolution, stick_resolution):
+    plt.style.use("dark_background")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    x_points = list(range(len(points)))
+    x_fpoints = list(range(len(fpoints)))
+    
+    ax.plot(x_points, points, label="Raw Points")
+    ax.plot(x_fpoints, fpoints, label="Filtered Points")
+    ax.set_xlabel("Samples")
+    ax.set_ylabel("Stick Value")
+    ax.set_title(f"Stick Movement Graph | {test_duration:.2f} seconds")
+    ax.legend()
+
+    text_to_display = f"Raw Points: {num_points}\n" \
+                      f"Filtered Points: {fnum_points}\n" \
+                      f"Step Res.: {avg_step_resolution:.5f}\n" \
+                      f"Tremor: {tremor:.1f}%\n"
+    fig.text(0.88, 0.15, text_to_display, ha="right", fontsize=10)
+    
+    plt.show()
+
 def analyze_results(points, start_time, end_time):
     if not points:
         print("No valid points detected for analysis.")
@@ -277,13 +411,13 @@ def analyze_results(points, start_time, end_time):
     fcounts = Counter(fdistances)
     fmost_common_value = max(fcounts, key=fcounts.get)
 
-    # Розрахунок середньої роздільної здатності
+    # Calculate average resolution
     avg_step_resolution = sum(fdistances) / len(fdistances)
 
     tremor = 100 - ((100 / num_points) * fnum_points)
     tremor = max(tremor, 0)
 
-    # Розрахунок Stick Resolution на основі Avg Step Resolution
+    # Calculate Stick Resolution based on Avg Step Resolution
     stick_resolution = int(1 / avg_step_resolution)
 
     print()
@@ -306,39 +440,35 @@ def analyze_results(points, start_time, end_time):
         else:
             break
 
+    # Save local results
     save_results(points)
+    
+    # Show graph
     visualize_results(points, fpoints, test_duration, fmost_common_value, num_points, fnum_points, tremor, avg_step_resolution, stick_resolution)
-
-def save_results(points):
-    with open("stick_data.txt", "w") as file:
-        data_str = ' '.join(f".{point*100000:05.0f}" for point in points)
-        file.write(data_str)
-    print("\nData saved to stick_data.txt")
-
-def visualize_results(points, fpoints, test_duration, resolution, num_points, fnum_points, tremor, avg_step_resolution, stick_resolution):
-    plt.style.use("dark_background")
-    fig, ax = plt.subplots(figsize=(10, 6))
     
-    x_points = list(range(len(points)))
-    x_fpoints = list(range(len(fpoints)))
+    # Ask user if they want to submit results
+    while True:
+        submit = input("\nWould you like to submit these results to gamepadla.com? (y/n): ").lower()
+        if submit in ['y', 'n']:
+            break
+        print("Invalid input. Please enter 'y' or 'n'.")
     
-    ax.plot(x_points, points, label="Program Points")
-    ax.plot(x_fpoints, fpoints, label="Analog Points")
-    ax.set_xlabel("Samples")
-    ax.set_ylabel("Stick Value")
-    ax.set_title(f"Stick Movement Graph | {test_duration:.2f} seconds")
-    ax.legend()
-
-    text_to_display = f"Program Points: {num_points}\n" \
-                      f"Analog Points: {fnum_points}\n" \
-                      f"Step Res.: {avg_step_resolution:.5f}\n" \
-                      f"Tremor: {tremor:.1f}%\n"
-    fig.text(0.88, 0.15, text_to_display, ha="right", fontsize=10)
-    
-    plt.show()
-    input("Press Enter to exit...")
+    if submit == 'y':
+        # Get controller information
+        controller_info = get_controller_info()
+        
+        # Prepare and submit test data
+        test_data = prepare_test_data(
+            points, test_duration, fmost_common_value, num_points, 
+            fnum_points, tremor, avg_step_resolution, stick_resolution,
+            controller_info
+        )
+        submit_test_results(test_data)
 
 def main():
+    clear_screen()
+    print_logo()
+    
     joystick = init_joystick()
     if joystick is None:
         return
@@ -367,6 +497,8 @@ def main():
         analyze_results(points, start_time, end_time)
     else:
         print("No stick movement detected.")
+    
+    input("\nPress Enter to exit...")
 
 if __name__ == "__main__":
     main()
