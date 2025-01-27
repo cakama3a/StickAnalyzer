@@ -33,15 +33,14 @@ def print_logo():
     print()
 
 def get_controller_info():
-    print("\nPlease provide information about your controller below")
-    print("---\n")
-
     # Get controller name
-    controller_name = input("Enter the full official name of your controller (As it is called on the Gamepadla.com website, if there are): ").strip()
+    print(f"\n{Style.BRIGHT}What model is this controller?{Style.RESET_ALL}")
+    print(f"{Fore.YELLOW}*Note: It is advisable to use the same name as on the Gamepadla.com website if this controller is present there.{Style.RESET_ALL}")
+    controller_name = input("Enter controller name: ").strip()
     
     # Get connection type
     while True:
-        print("\nHow is the controller connected?")
+        print(f"\n{Style.BRIGHT}How is the controller connected?{Style.RESET_ALL}")
         print("1. Cable")
         print("2. Bluetooth")
         print("3. Wireless Receiver")
@@ -58,7 +57,7 @@ def get_controller_info():
     
     # Get controller mode
     while True:
-        print("\nWhat mode is the controller in?")
+        print(f"\n{Style.BRIGHT}What mode is the controller in?{Style.RESET_ALL}")
         print("1. XInput")
         print("2. DirectInput")
         print("3. Switch")
@@ -352,7 +351,7 @@ def submit_test_results(data):
         response = requests.post(url, data=data)
         if response.status_code == 200:
             print("\nTest results successfully submitted to gamepadla.com")
-            print("If the test passes verification and meets the criteria, it will be added to the controller's page.")
+            print(f"{Fore.YELLOW}If the test passes verification and meets the criteria, it will be added to the controller's page.{Style.RESET_ALL}")
             print(f"Test ID: {data['test_key2']}")
             return True
         else:
