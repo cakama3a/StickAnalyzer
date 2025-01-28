@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime
 import os
 
-version = "1.7.1.1"
+version = "1.7.1.2"
 
 # Глобальна змінна для порогу руху стіку
 THRESHOLD = 0.05
@@ -317,7 +317,7 @@ def generate_test_id():
     # Generate a unique test ID
     return str(uuid.uuid4())
 
-def prepare_test_data(points, test_duration, resolution, num_points, fnum_points, tremor, avg_step_resolution, stick_resolution, controller_info):
+def prepare_test_data(points, fpoints, test_duration, resolution, num_points, fnum_points, tremor, avg_step_resolution, stick_resolution, controller_info):
     # Prepare test data for server submission
     return {
         "lin_test": True,
@@ -336,7 +336,10 @@ def prepare_test_data(points, test_duration, resolution, num_points, fnum_points
             "tremor": tremor,
             "stick_resolution": stick_resolution
         },
-        "all_delays": points
+        "all_delays": {
+            "raw": points,
+            "filtered": fpoints
+        }
     }
 
 def submit_test_results(data):
