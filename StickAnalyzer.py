@@ -32,64 +32,6 @@ def print_logo():
     print(f"Support the project: https://ko-fi.com/gamepadla")
     print()
 
-def get_controller_info():
-    # Get controller name
-    print(f"\n{Style.BRIGHT}What model is this controller?{Style.RESET_ALL}")
-    print(f"{Fore.YELLOW}*Note: It is advisable to use the same name as on the Gamepadla.com website if this controller is present there.{Style.RESET_ALL}")
-    controller_name = input("Enter controller name: ").strip()
-    
-    # Get firmware version
-    print(f"\n{Style.BRIGHT}Enter controller firmware version:{Style.RESET_ALL}")
-    print(f"{Fore.YELLOW}*Note: If there's no firmware, leave the field empty{Style.RESET_ALL}")
-    firmware_version = input("Enter firmware version: ").strip()
-    
-    # Get connection type
-    while True:
-        print(f"\n{Style.BRIGHT}How is the controller connected?{Style.RESET_ALL}")
-        print("1. Cable")
-        print("2. Bluetooth")
-        print("3. Wireless Receiver")
-        connection = input("Enter choice (1-3): ").strip()
-        if connection in ['1', '2', '3']:
-            connection_types = {
-                '1': 'Cable',
-                '2': 'Bluetooth',
-                '3': 'Dongle'
-            }
-            connection = connection_types[connection]
-            break
-        print("Invalid choice. Please try again.")
-    
-    # Get controller mode
-    while True:
-        print(f"\n{Style.BRIGHT}What mode is the controller in?{Style.RESET_ALL}")
-        print("1. Xinput")
-        print("2. Switch")
-        print("3. Dinput")
-        print("4. PS5")
-        print("5. PS4")
-        print("6. PS3")
-        mode = input("Enter choice (1-6): ").strip()
-        if mode in ['1', '2', '3', '4', '5', '6']:
-            mode_types = {
-                '1': 'xinput',
-                '2': 'switch',
-                '3': 'dinput',
-                '4': 'ps5',
-                '5': 'ps4',
-                '6': 'ps3'
-            }
-            mode = mode_types[mode]
-            break
-        print("Invalid choice. Please try again.")
-    
-    return {
-        'name': controller_name,
-        'firmware': firmware_version,
-        'connection': connection,
-        'mode': mode
-    }
-
 def init_joystick():
     pygame.init()
     pygame.joystick.init()
@@ -338,17 +280,13 @@ def generate_test_id():
     # Combine and return
     return f"{time_part}{random_chars}"
 
-def prepare_test_data(points, fpoints, test_duration, resolution, num_points, fnum_points, tremor, avg_step_resolution, stick_resolution, controller_info):
-    # Prepare test data for server submission
+def prepare_test_data(points, fpoints, test_duration, resolution, num_points, fnum_points, tremor, avg_step_resolution, stick_resolution, joystick_name):
     return {
         "lin_test": True,
         "test_key2": generate_test_id(),
         "method": "LIN",
         "version": version,
-        "name": controller_info['name'],
-        "connection": controller_info['connection'],
-        "driver": controller_info['mode'],
-        "firmware": controller_info['firmware'],
+        "name": joystick_name,
         "all_stats": {
             "duration": test_duration,
             "min_resolution": resolution,
@@ -416,7 +354,7 @@ def visualize_results(points, fpoints, test_duration, resolution, num_points, fn
     
     plt.show()
 
-def analyze_results(points, start_time, end_time):
+def analyze_results(points, start_time, end_time, joystick_name):
     if not points:
         print("No valid points detected for analysis.")
         return
@@ -472,34 +410,20 @@ def analyze_results(points, start_time, end_time):
     # Show graph
     visualize_results(points, fpoints, test_duration, fmost_common_value, num_points, fnum_points, tremor, avg_step_resolution, stick_resolution)
     
-    # Ask user if they want to submit results
-    while True:
-        print(f"\n{Style.BRIGHT}Would you like to submit these results to gamepadla.com?{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}*Note: Tests are accepted only if the test for this controller is not yet available")
-        print(f"or your test has a newer firmware version than the one presented on the website{Style.RESET_ALL}")
-        submit = input("Enter y/n: ").lower()
-        if submit in ['y', 'n']:
-            break
-        print("Invalid input. Please enter 'y' or 'n'.")
-    
-    if submit == 'y':
-        # Get controller information
-        controller_info = get_controller_info()
-        
-        # Prepare and submit test data
-        test_data = prepare_test_data(
-            points=points,
-            fpoints=fpoints,
-            test_duration=test_duration,
-            resolution=fmost_common_value,
-            num_points=num_points,
-            fnum_points=fnum_points,
-            tremor=tremor,
-            avg_step_resolution=avg_step_resolution,
-            stick_resolution=stick_resolution,
-            controller_info=controller_info
-        )
-        submit_test_results(test_data)
+    # Prepare and submit test data
+    test_data = prepare_test_data(
+        points=points,
+        fpoints=fpoints,
+        test_duration=test_duration,
+        resolution=fmost_common_value,
+        num_points=num_points,
+        fnum_points=fnum_points,
+        tremor=tremor,
+        avg_step_resolution=avg_step_resolution,
+        stick_resolution=stick_resolution,
+        joystick_name=joystick_name
+    )
+    submit_test_results(test_data)
 
 def main():
     clear_screen()
@@ -508,7 +432,8 @@ def main():
     joystick = init_joystick()
     if joystick is None:
         return
-
+    
+    joystick_name = joystick.get_name()
     x_axis, y_axis = choose_stick()
 
     positions = []
@@ -530,7 +455,7 @@ def main():
     pygame.quit()
 
     if points and start_time and end_time:
-        analyze_results(points, start_time, end_time)
+        analyze_results(points, start_time, end_time, joystick_name)
     else:
         print("No stick movement detected.")
     
