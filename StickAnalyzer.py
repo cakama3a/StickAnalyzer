@@ -282,6 +282,10 @@ def generate_test_id():
     return f"{time_part}{random_chars}"
 
 def prepare_test_data(points, fpoints, test_duration, resolution, num_points, fnum_points, tremor, avg_step_resolution, stick_resolution, joystick_name):
+    # Format points to exactly 5 decimal places
+    formatted_points = [f"{p:.5f}" for p in points]
+    formatted_fpoints = [f"{p:.5f}" for p in fpoints]
+    
     return {
         "lin_test": True,
         "test_key2": generate_test_id(),
@@ -289,17 +293,17 @@ def prepare_test_data(points, fpoints, test_duration, resolution, num_points, fn
         "version": version,
         "name": joystick_name,
         "all_stats": {
-            "duration": test_duration,
-            "min_resolution": resolution,
-            "avg_resolution": avg_step_resolution,
+            "duration": float(f"{test_duration:.5f}"),
+            "min_resolution": float(f"{resolution:.5f}"),
+            "avg_resolution": float(f"{avg_step_resolution:.5f}"),
             "total_points": num_points,
             "analog_points": fnum_points,
-            "tremor": tremor,
+            "tremor": float(f"{tremor:.5f}"),
             "stick_resolution": stick_resolution
         },
         "all_delays": {
-            "raw": points,
-            "filtered": fpoints
+            "raw": formatted_points,
+            "filtered": formatted_fpoints
         }
     }
 
