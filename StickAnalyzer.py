@@ -1,7 +1,6 @@
 import pygame
 import time
 import math
-import matplotlib.pyplot as plt
 from colorama import Fore, Back, Style
 from collections import Counter
 from threading import Thread, Event
@@ -12,7 +11,7 @@ from datetime import datetime
 import os
 import webbrowser
 
-version = "1.7.1.2"
+version = "1.7.2.0"
 
 # Глобальна змінна для порогу руху стіку
 THRESHOLD = 0.05
@@ -318,7 +317,6 @@ def submit_test_results(data):
         response = requests.post(url, data=data)
         if response.status_code == 200:
             print("\nTest results successfully submitted to gamepadla.com")
-            print(f"{Fore.YELLOW}If the test passes verification and meets the criteria, it will be added to the controller's page.{Style.RESET_ALL}")
             test_id = data['test_key2']
             print(f"Test ID: {test_id}")
             
@@ -383,17 +381,11 @@ def analyze_results(points, start_time, end_time, joystick_name):
     fcounts = Counter(fdistances)
     fmost_common_value = max(fcounts, key=fcounts.get)
 
-    # Calculate average resolution
     avg_step_resolution = sum(fdistances) / len(fdistances)
-
-    tremor = 100 - ((100 / num_points) * fnum_points)
-    tremor = max(tremor, 0)
-
-    # Calculate Stick Resolution based on Avg Step Resolution
+    tremor = max(100 - ((100 / num_points) * fnum_points), 0)
     stick_resolution = int(1 / avg_step_resolution)
 
-    print()
-    print("TEST RESULTS:")
+    print("\nTEST RESULTS:")
     if test_duration < 3:
         print("\033[31mWARNING:\033[0m The test duration should be at least 3 seconds! The test should be repeated!")
     print("-------------")
@@ -403,22 +395,6 @@ def analyze_results(points, start_time, end_time, joystick_name):
     print(f"Analog points:          {fnum_points} of {num_points}")
     print(f"Tremor:                 {tremor:.1f}%")
 
-    total_counts = sum(fcounts.values())
-    print("\nTop 5 Value Occurrences:")
-    for i, (value, count) in enumerate(sorted(fcounts.items(), key=lambda x: x[1], reverse=True)):
-        if i < 5:
-            percentage = (count / total_counts) * 100
-            print(f"{value:.5f}: {count} ({percentage:.2f}%)")
-        else:
-            break
-
-    # Save local results
-    save_results(points)
-    
-    # Show graph
-    visualize_results(points, fpoints, test_duration, fmost_common_value, num_points, fnum_points, tremor, avg_step_resolution, stick_resolution)
-    
-    # Prepare and submit test data
     test_data = prepare_test_data(
         points=points,
         fpoints=fpoints,
