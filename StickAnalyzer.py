@@ -10,6 +10,7 @@ import json
 import uuid
 from datetime import datetime
 import os
+import webbrowser
 
 version = "1.7.1.2"
 
@@ -302,11 +303,10 @@ def prepare_test_data(points, fpoints, test_duration, resolution, num_points, fn
         }
     }
 
+
 def submit_test_results(data):
-    # Submit test results to the server
     url = "https://gamepadla.com/scripts/poster.php"
     
-    # Convert data to JSON strings
     data['all_stats'] = json.dumps(data['all_stats'])
     data['all_delays'] = json.dumps(data['all_delays'])
     
@@ -315,7 +315,11 @@ def submit_test_results(data):
         if response.status_code == 200:
             print("\nTest results successfully submitted to gamepadla.com")
             print(f"{Fore.YELLOW}If the test passes verification and meets the criteria, it will be added to the controller's page.{Style.RESET_ALL}")
-            print(f"Test ID: {data['test_key2']}")
+            test_id = data['test_key2']
+            print(f"Test ID: {test_id}")
+            
+            results_url = f"https://gamepadla.com/stick_analyzer/{test_id}/"
+            webbrowser.open(results_url)
             return True
         else:
             print(f"\nFailed to submit results. Status code: {response.status_code}")
