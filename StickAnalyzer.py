@@ -38,6 +38,11 @@ def get_controller_info():
     print(f"{Fore.YELLOW}*Note: It is advisable to use the same name as on the Gamepadla.com website if this controller is present there.{Style.RESET_ALL}")
     controller_name = input("Enter controller name: ").strip()
     
+    # Get firmware version
+    print(f"\n{Style.BRIGHT}Enter controller firmware version:{Style.RESET_ALL}")
+    print(f"{Fore.YELLOW}*Note: If there's no firmware, leave the field empty{Style.RESET_ALL}")
+    firmware_version = input("Enter firmware version: ").strip()
+    
     # Get connection type
     while True:
         print(f"\n{Style.BRIGHT}How is the controller connected?{Style.RESET_ALL}")
@@ -49,7 +54,7 @@ def get_controller_info():
             connection_types = {
                 '1': 'Cable',
                 '2': 'Bluetooth',
-                '3': 'Wireless Receiver'
+                '3': 'Dongle'
             }
             connection = connection_types[connection]
             break
@@ -58,26 +63,29 @@ def get_controller_info():
     # Get controller mode
     while True:
         print(f"\n{Style.BRIGHT}What mode is the controller in?{Style.RESET_ALL}")
-        print("1. XInput")
-        print("2. DirectInput")
-        print("3. Switch")
-        print("4. Other")
-        mode = input("Enter choice (1-4): ").strip()
-        if mode in ['1', '2', '3', '4']:
+        print("1. Xinput")
+        print("2. Switch")
+        print("3. Dinput")
+        print("4. PS5")
+        print("5. PS4")
+        print("6. PS3")
+        mode = input("Enter choice (1-6): ").strip()
+        if mode in ['1', '2', '3', '4', '5', '6']:
             mode_types = {
-                '1': 'XInput',
-                '2': 'DirectInput',
-                '3': 'Switch',
-                '4': 'Other'
+                '1': 'xinput',
+                '2': 'switch',
+                '3': 'dinput',
+                '4': 'ps5',
+                '5': 'ps4',
+                '6': 'ps3'
             }
             mode = mode_types[mode]
-            if mode == 'Other':
-                mode = input("Please specify the mode: ").strip()
             break
         print("Invalid choice. Please try again.")
     
     return {
         'name': controller_name,
+        'firmware': firmware_version,
         'connection': connection,
         'mode': mode
     }
@@ -95,6 +103,7 @@ def init_joystick():
 
     joystick = joysticks[0]
     joystick.init()
+    print(f"\n{Style.BRIGHT}Connected controller: {joystick.get_name()}{Style.RESET_ALL}")
     return joystick
 
 def choose_stick():
@@ -327,6 +336,7 @@ def prepare_test_data(points, fpoints, test_duration, resolution, num_points, fn
         "name": controller_info['name'],
         "connection": controller_info['connection'],
         "driver": controller_info['mode'],
+        "firmware": controller_info['firmware'],
         "all_stats": {
             "duration": test_duration,
             "min_resolution": resolution,
@@ -365,10 +375,12 @@ def submit_test_results(data):
         return False
 
 def save_results(points):
-    with open("stick_data.txt", "w") as file:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"stick_analyzer_{timestamp}.txt"
+    with open(filename, "w") as file:
         data_str = ' '.join(f".{point*100000:05.0f}" for point in points)
         file.write(data_str)
-    print("\nData saved to stick_data.txt")
+    print(f"\nData saved to {filename}")
 
 def visualize_results(points, fpoints, test_duration, resolution, num_points, fnum_points, tremor, avg_step_resolution, stick_resolution):
     plt.style.use("dark_background")
@@ -450,7 +462,10 @@ def analyze_results(points, start_time, end_time):
     
     # Ask user if they want to submit results
     while True:
-        submit = input("\nWould you like to submit these results to gamepadla.com? (y/n): ").lower()
+        print(f"\n{Style.BRIGHT}Would you like to submit these results to gamepadla.com?{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}*Note: Tests are accepted only if the test for this controller is not yet available")
+        print(f"or your test has a newer firmware version than the one presented on the website{Style.RESET_ALL}")
+        submit = input("Enter y/n: ").lower()
         if submit in ['y', 'n']:
             break
         print("Invalid input. Please enter 'y' or 'n'.")
@@ -461,9 +476,16 @@ def analyze_results(points, start_time, end_time):
         
         # Prepare and submit test data
         test_data = prepare_test_data(
-            points, test_duration, fmost_common_value, num_points, 
-            fnum_points, tremor, avg_step_resolution, stick_resolution,
-            controller_info
+            points=points,
+            fpoints=fpoints,
+            test_duration=test_duration,
+            resolution=fmost_common_value,
+            num_points=num_points,
+            fnum_points=fnum_points,
+            tremor=tremor,
+            avg_step_resolution=avg_step_resolution,
+            stick_resolution=stick_resolution,
+            controller_info=controller_info
         )
         submit_test_results(test_data)
 
