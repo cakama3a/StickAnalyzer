@@ -323,8 +323,20 @@ def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5
     return points, start_time, end_time
 
 def generate_test_id():
-    # Generate a unique test ID
-    return str(uuid.uuid4())
+    # Generate a shorter unique test ID combining timestamp and random elements
+    import time
+    import random
+    import string
+    
+    # Get current timestamp and convert to base36
+    timestamp = int(time.time())
+    time_part = format(timestamp, 'x')[-6:]  # Last 6 chars of hex timestamp
+    
+    # Generate 4 random characters
+    random_chars = ''.join(random.choices(string.ascii_letters + string.digits, k=4))
+    
+    # Combine and return
+    return f"{time_part}{random_chars}"
 
 def prepare_test_data(points, fpoints, test_duration, resolution, num_points, fnum_points, tremor, avg_step_resolution, stick_resolution, controller_info):
     # Prepare test data for server submission
