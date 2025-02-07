@@ -1,17 +1,15 @@
 import pygame
 import time
-import math
 from colorama import Fore, Back, Style
 from collections import Counter
 from threading import Thread, Event
 import requests
 import json
-import uuid
 from datetime import datetime
 import os
 import webbrowser
 
-version = "1.7.2.0"
+version = "2.0.0.0"
 
 # Глобальна змінна для порогу руху стіку
 THRESHOLD = 0.05
