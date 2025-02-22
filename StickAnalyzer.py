@@ -320,6 +320,7 @@ def submit_test_results(data):
             
             results_url = f"https://gamepadla.com/stick_analyzer/{test_id}/"
             webbrowser.open(results_url)
+            print(f"You can view your results at: {results_url}")
             return True
         else:
             print(f"\nFailed to submit results. Status code: {response.status_code}")
