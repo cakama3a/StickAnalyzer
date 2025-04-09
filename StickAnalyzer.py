@@ -3,10 +3,11 @@ import time
 from colorama import Fore, Back, Style
 from collections import Counter
 from threading import Thread, Event
-import os
+import requests
 import json
 from datetime import datetime
-import matplotlib.pyplot as plt
+import os
+import webbrowser
 
 version = "2.0.0.0"
 
@@ -59,21 +60,18 @@ def choose_stick():
         print("Invalid choice, defaulting to left stick.")
         return 0, 1
 
-def filter_noise(results, timestamps):
-    if not results or not timestamps:
-        return [], []
+def filter_noise(results):
+    if not results:
+        return []
 
-    # Модифікований фільтр, який враховує також часові проміжки між точками
-    filtered_data = []
-    filtered_timestamps = []
-    
-    for i in range(len(results)):
-        # Перевіряємо, чи точка відповідає критеріям фільтрації
-        if i == 0 or (results[i] > results[i-1]):
-            filtered_data.append(results[i])
-            filtered_timestamps.append(timestamps[i])
-    
-    return filtered_data, filtered_timestamps
+    filtered_results = [results[0]]
+    for i in range(1, len(results)):
+        current_value = results[i]
+        previous_values = results[:i]
+        if current_value not in filtered_results and all(prev <= current_value for prev in previous_values):
+            filtered_results.append(current_value)
+
+    return filtered_results
 
 def visualize_stick_movement(screen, joystick, positions, stop_event, countdown_duration=5, guide_radius=100, guide_duration=10, guide_size=12, x_axis=0, y_axis=1):
     global calibration_completed
@@ -90,6 +88,8 @@ def visualize_stick_movement(screen, joystick, positions, stop_event, countdown_
     upper_threshold_reached = False
     lower_threshold_reached = False
     guide_delay = 3
+    guide_x = center[0]
+    guide_stopped = False
     test_completed = False
     result_shown = False
 
@@ -97,10 +97,9 @@ def visualize_stick_movement(screen, joystick, positions, stop_event, countdown_
         current_time = time.time()
         screen.fill((30, 30, 30))
 
-        # Малюємо основну сітку
-        pygame.draw.circle(screen, (100, 100, 100), center, guide_radius, 1)
-        pygame.draw.line(screen, (100, 100, 100), (center[0] - guide_radius, center[1]), (center[0] + guide_radius, center[1]), 1)
-        pygame.draw.line(screen, (100, 100, 100), (center[0], center[1] - guide_radius), (center[0], center[1] + guide_radius), 1)
+        pygame.draw.circle(screen, (200, 200, 200), center, guide_radius, 1)
+        pygame.draw.line(screen, (200, 200, 200), (center[0] - guide_radius, center[1]), (center[0] + guide_radius, center[1]), 1)
+        pygame.draw.line(screen, (200, 200, 200), (center[0], center[1] - guide_radius), (center[0], center[1] + guide_radius), 1)
 
         x = joystick.get_axis(x_axis)
         y = joystick.get_axis(y_axis)
@@ -156,31 +155,24 @@ def visualize_stick_movement(screen, joystick, positions, stop_event, countdown_
                 start_time = time.time()
                 continue
             else:
-                instruction_text = "Get ready to move the stick to the LEFT in your own pace."
+                instruction_text = "Get ready to follow the guide."
                 instruction_rendered = font_small.render(instruction_text, True, (255, 255, 255))
                 instruction_rect = instruction_rendered.get_rect(center=(center[0], center[1] - 140))
                 screen.blit(instruction_rendered, instruction_rect)
 
         elif guide_visible and not test_completed:
-            instruction_text = "Move stick LEFT at your own pace - TEST YOUR CURVE"
+            instruction_text = "Follow the guide"
             instruction_rendered = font_small.render(instruction_text, True, (255, 255, 255))
             instruction_rect = instruction_rendered.get_rect(center=(center[0], center[1] - 140))
             screen.blit(instruction_rendered, instruction_rect)
-            
-            # Малюємо тільки тонку стрілку над віссю X зліва
-            arrow_start = (center[0] - guide_radius + 40, center[1] - 5)
-            arrow_end = (center[0] - guide_radius + 10, center[1] - 5)
-            
-            # Лінія стрілки
-            pygame.draw.line(screen, (200, 200, 200), arrow_start, arrow_end, 1)
-            
-            # Наконечник стрілки
-            arrow_head = [
-                arrow_end,
-                (arrow_end[0] + 5, arrow_end[1] - 3),
-                (arrow_end[0] + 5, arrow_end[1] + 3),
-            ]
-            pygame.draw.polygon(screen, (200, 200, 200), arrow_head)
+
+            linear_elapsed_time = time.time() - start_time
+            guide_x = center[0] - int((linear_elapsed_time / guide_duration) * guide_radius)
+
+            if guide_x < center[0] - guide_radius:
+                guide_x = center[0] - guide_radius
+
+            pygame.draw.circle(screen, (255, 255, 255), (guide_x, center[1]), guide_size, 2)
 
             if movement_started and (abs(x) >= THRESHOLD or abs(y) >= THRESHOLD):
                 threshold_reached = True
@@ -208,6 +200,7 @@ def visualize_stick_movement(screen, joystick, positions, stop_event, countdown_
             screen.blit(coords_rendered, (10, 10))
 
         if test_completed and not result_shown:
+            pygame.draw.circle(screen, (255, 255, 255), (guide_x, center[1]), guide_size, 2)
             print("Test completed: Stick reached boundary position.")
             result_shown = True
             stop_event.set()
@@ -224,7 +217,6 @@ def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5
     running = True
     threshold_reached = False
     stick_centered = False
-    timestamps = []  # Додаємо для збереження часу кожної точки
 
     print("---")
     print(f"Please switch to the program window and follow the guide's instructions")
@@ -257,20 +249,18 @@ def measure_stick_movement(joystick, positions, stop_event, countdown_duration=5
             continue
 
         if abs(x) >= THRESHOLD and x != prev_x:
-            current_time = time.time()
             distance = abs(x - prev_x)
             prev_x = x
             points.append(abs(x))
-            timestamps.append(current_time - start_time if start_time else 0)  # Зберігаємо відносний час
             if abs(x) != 1.0:
-                print(f"{abs(x):.5f} [{distance:.4f}] at {timestamps[-1]:.4f}s")
+                print(f"{abs(x):.5f} [{distance:.4f}]")
 
         if abs(x) >= 0.99:
             running = False
 
     end_time = time.time() if points else None
     stop_event.set()
-    return points, timestamps, start_time, end_time
+    return points, start_time, end_time
 
 def generate_test_id():
     # Generate a shorter unique test ID combining timestamp and random elements
@@ -288,103 +278,98 @@ def generate_test_id():
     # Combine and return
     return f"{time_part}{random_chars}"
 
-def save_results(points, timestamps, fpoints, ftimestamps, test_duration):
+def prepare_test_data(points, fpoints, test_duration, resolution, num_points, fnum_points, tremor, avg_step_resolution, stick_resolution, joystick_name):
+    # Format points to exactly 5 decimal places
+    formatted_points = [f"{p:.5f}" for p in points]
+    formatted_fpoints = [f"{p:.5f}" for p in fpoints]
+    
+    return {
+        "lin_test": True,
+        "test_key2": generate_test_id(),
+        "method": "LIN",
+        "version": version,
+        "name": joystick_name,
+        "all_stats": {
+            "duration": float(f"{test_duration:.5f}"),
+            "min_resolution": float(f"{resolution:.5f}"),
+            "avg_resolution": float(f"{avg_step_resolution:.5f}"),
+            "total_points": num_points,
+            "analog_points": fnum_points,
+            "tremor": float(f"{tremor:.5f}"),
+            "stick_resolution": stick_resolution
+        },
+        "all_delays": {
+            "raw": formatted_points,
+            "filtered": formatted_fpoints
+        }
+    }
+
+
+def submit_test_results(data):
+    url = "https://gamepadla.com/scripts/poster.php"
+    
+    data['all_stats'] = json.dumps(data['all_stats'])
+    data['all_delays'] = json.dumps(data['all_delays'])
+    
+    try:
+        response = requests.post(url, data=data)
+        if response.status_code == 200:
+            print("\nTest results successfully submitted to gamepadla.com")
+            test_id = data['test_key2']
+            print(f"Test ID: {test_id}")
+            
+            results_url = f"https://gamepadla.com/stick_analyzer/{test_id}/"
+            webbrowser.open(results_url)
+            print(f"You can view your results at: {results_url}")
+            return True
+        else:
+            print(f"\nFailed to submit results. Status code: {response.status_code}")
+            return False
+    except Exception as e:
+        print(f"\nError submitting results: {str(e)}")
+        return False
+
+def save_results(points):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"stick_analyzer_{timestamp}.txt"
     with open(filename, "w") as file:
-        file.write("# Stick Analyzer Results\n")
-        file.write(f"# Test Duration: {test_duration:.2f} seconds\n")
-        file.write("# Raw Data\n")
-        file.write("# Time,Position\n")
-        for i in range(len(points)):
-            file.write(f"{timestamps[i]:.5f},{points[i]:.5f}\n")
-        
-        file.write("\n# Filtered Data\n")
-        file.write("# Time,Position\n")
-        for i in range(len(fpoints)):
-            file.write(f"{ftimestamps[i]:.5f},{fpoints[i]:.5f}\n")
-    
+        data_str = ' '.join(f".{point*100000:05.0f}" for point in points)
+        file.write(data_str)
     print(f"\nData saved to {filename}")
 
-def visualize_results(points, fpoints, timestamps, ftimestamps, test_duration):
-    # Налаштування стилю графіка для темного фону
+def visualize_results(points, fpoints, test_duration, resolution, num_points, fnum_points, tremor, avg_step_resolution, stick_resolution):
     plt.style.use("dark_background")
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(10, 6))
     
-    # Перший графік - позиція стіка відносно часу
-    ax1.plot(timestamps, points, 'o-', label="Raw Points", alpha=0.7)
-    ax1.plot(ftimestamps, fpoints, 'o-', label="Filtered Points", color='red', linewidth=2)
-    ax1.set_xlabel("Time (seconds)")
-    ax1.set_ylabel("Stick Value")
-    ax1.set_title(f"Stick Movement Graph | {test_duration:.2f} seconds")
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
+    x_points = list(range(len(points)))
+    x_fpoints = list(range(len(fpoints)))
     
-    # Другий графік - швидкість руху стіка
-    velocities = []
-    velocity_times = []
+    ax.plot(x_points, points, label="Raw Points")
+    ax.plot(x_fpoints, fpoints, label="Filtered Points")
+    ax.set_xlabel("Samples")
+    ax.set_ylabel("Stick Value")
+    ax.set_title(f"Stick Movement Graph | {test_duration:.2f} seconds")
+    ax.legend()
+
+    text_to_display = f"Raw Points: {num_points}\n" \
+                      f"Filtered Points: {fnum_points}\n" \
+                      f"Step Res.: {avg_step_resolution:.5f}\n" \
+                      f"Tremor: {tremor:.1f}%\n"
+    fig.text(0.88, 0.15, text_to_display, ha="right", fontsize=10)
     
-    if len(timestamps) > 1:
-        for i in range(1, len(points)):
-            if timestamps[i] != timestamps[i-1]:  # Уникаємо ділення на нуль
-                velocity = (points[i] - points[i-1]) / (timestamps[i] - timestamps[i-1])
-                velocities.append(velocity)
-                velocity_times.append(timestamps[i])
-    
-    if velocities:
-        ax2.plot(velocity_times, velocities, 'o-', label="Velocity", color='yellow')
-        ax2.set_xlabel("Time (seconds)")
-        ax2.set_ylabel("Velocity (position/second)")
-        ax2.set_title("Stick Movement Velocity")
-        ax2.legend()
-        ax2.grid(True, alpha=0.3)
-        
-        # Обчислення статистики
-        avg_velocity = sum(velocities) / len(velocities)
-        min_velocity = min(velocities)
-        max_velocity = max(velocities)
-        
-        # Додавання статистики до графіка
-        stats_text = f"Min Velocity: {min_velocity:.3f}\n" \
-                    f"Max Velocity: {max_velocity:.3f}\n" \
-                    f"Avg Velocity: {avg_velocity:.3f}\n" \
-                    f"Raw Points: {len(points)}\n" \
-                    f"Filtered Points: {len(fpoints)}"
-        
-        # Розміщення текстового блоку з інформацією
-        fig.text(0.02, 0.02, stats_text, fontsize=10, bbox=dict(facecolor='black', alpha=0.7))
-    
-    plt.tight_layout()
     plt.show()
 
-def analyze_results(points, start_time, end_time, joystick_name, timestamps):
+def analyze_results(points, start_time, end_time, joystick_name):
     if not points:
         print("No valid points detected for analysis.")
         return
 
     test_duration = end_time - start_time
-    fpoints, ftimestamps = filter_noise(points, timestamps)
+    fpoints = filter_noise(points)
 
     if not fpoints:
         print("No filtered points available for analysis.")
         return
-
-    # Обчислення швидкості руху для кожної точки
-    velocities = []
-    if len(points) > 1 and len(timestamps) > 1:
-        for i in range(1, len(points)):
-            # Швидкість = зміна позиції / зміна часу
-            if timestamps[i] != timestamps[i-1]:  # Уникаємо ділення на нуль
-                velocity = (points[i] - points[i-1]) / (timestamps[i] - timestamps[i-1])
-                velocities.append(velocity)
-        
-        if velocities:
-            avg_velocity = sum(velocities) / len(velocities)
-            min_velocity = min(velocities)
-            max_velocity = max(velocities)
-            print(f"Min velocity: {min_velocity:.5f}")
-            print(f"Max velocity: {max_velocity:.5f}")
-            print(f"Avg velocity: {avg_velocity:.5f}")
 
     distances = [abs(points[i] - points[i - 1]) for i in range(1, len(points))]
     fdistances = [abs(fpoints[i] - fpoints[i - 1]) for i in range(1, len(fpoints))]
@@ -392,16 +377,12 @@ def analyze_results(points, start_time, end_time, joystick_name, timestamps):
     num_points = len(points)
     fnum_points = len(fpoints)
     
-    if fdistances:
-        fcounts = Counter(fdistances)
-        fmost_common_value = max(fcounts, key=fcounts.get)
-        avg_step_resolution = sum(fdistances) / len(fdistances)
-    else:
-        fmost_common_value = 0
-        avg_step_resolution = 0
-    
-    tremor = max(100 - ((100 / num_points) * fnum_points), 0) if num_points > 0 else 0
-    stick_resolution = int(1 / avg_step_resolution) if avg_step_resolution > 0 else 0
+    fcounts = Counter(fdistances)
+    fmost_common_value = max(fcounts, key=fcounts.get)
+
+    avg_step_resolution = sum(fdistances) / len(fdistances)
+    tremor = max(100 - ((100 / num_points) * fnum_points), 0)
+    stick_resolution = int(1 / avg_step_resolution)
 
     print("\nTEST RESULTS:")
     if test_duration < 3:
@@ -412,10 +393,20 @@ def analyze_results(points, start_time, end_time, joystick_name, timestamps):
     print(f"Avg. Step Resolution:   {avg_step_resolution:.5f}")
     print(f"Analog points:          {fnum_points} of {num_points}")
     print(f"Tremor:                 {tremor:.1f}%")
-    
-    # Замість відправки на сервер зберігаємо результати та показуємо графік
-    save_results(points, timestamps, fpoints, ftimestamps, test_duration)
-    visualize_results(points, fpoints, timestamps, ftimestamps, test_duration)
+
+    test_data = prepare_test_data(
+        points=points,
+        fpoints=fpoints,
+        test_duration=test_duration,
+        resolution=fmost_common_value,
+        num_points=num_points,
+        fnum_points=fnum_points,
+        tremor=tremor,
+        avg_step_resolution=avg_step_resolution,
+        stick_resolution=stick_resolution,
+        joystick_name=joystick_name
+    )
+    submit_test_results(test_data)
 
 def main():
     clear_screen()
@@ -441,13 +432,13 @@ def main():
     visualization_thread = Thread(target=visualize_stick_movement, args=(screen, joystick, positions, stop_event, countdown_duration, guide_radius, guide_duration, guide_size, x_axis, y_axis))
     visualization_thread.start()
     
-    points, timestamps, start_time, end_time = measure_stick_movement(joystick, positions, stop_event, countdown_duration, x_axis, y_axis)
+    points, start_time, end_time = measure_stick_movement(joystick, positions, stop_event, countdown_duration, x_axis, y_axis)
     visualization_thread.join()
 
     pygame.quit()
 
     if points and start_time and end_time:
-        analyze_results(points, start_time, end_time, joystick_name, timestamps)
+        analyze_results(points, start_time, end_time, joystick_name)
     else:
         print("No stick movement detected.")
     
