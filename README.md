@@ -15,3 +15,6 @@ Key features of Stick Analyzer:
 ![image](https://github.com/cakama3a/StickAnalyzer/assets/15096106/7554c787-4c7e-4999-b139-20791d90620a)
 
 Stick Analyzer is a valuable tool for gaming enthusiasts, developers, and anyone striving to achieve maximum precision and responsiveness from their joysticks or game controllers. This program allows users to gain a comprehensive understanding of the stick's resolution and identify potential issues or limitations related to hardware or drivers.
+
+## License
+StickAnalyzer is licensed under the MIT License with an attribution requirement. See the [LICENSE](LICENSE.txt) file for details.
