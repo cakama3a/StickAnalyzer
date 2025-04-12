@@ -38,7 +38,7 @@ Stick Analyzer offers a robust set of tools to analyze joystick performance:
 
 ---
 
-## Installation
+## Installation (Console version)
 
 ### Prerequisites
 
