@@ -33,15 +33,27 @@ Stick Analyzer offers a robust set of tools to analyze joystick performance:
 ![Results Plot](https://github.com/user-attachments/assets/4eb09041-64b2-448a-9fe9-476a7ff78e1f)  
 *Graphical plot showing stick movement and linearity analysis.*
 
-<img width="941" alt="2025-04-12_12-54" src="https://github.com/user-attachments/assets/1af91fd9-e7df-4673-aa95-8008f44366c2" />   
+<img width="941" alt="2025-04-12_12-54" src="https://github.com/user-attachments/assets/1af91fd9-e7df-4673-aa95-8008f44366c2" />  
 *Web version of the test after sending it to Gamepadla.com servers*
 
 ---
 
-## Installation (Console version)
+## Installation
 
-### Prerequisites
+### Windows (Executable Version)
+For Windows users, simply download and run the pre-built executable:
 
+1. Visit the [releases page](https://github.com/cakama3a/StickAnalyzer/releases).
+2. Download the latest `.exe` file (e.g., `StickAnalyzer-v2.0.3.0.exe`).
+3. Double-click the `.exe` file to launch Stick Analyzer—no additional setup required.
+4. Ensure a compatible game controller is connected.
+
+> **Note**: The executable includes all dependencies, making it the easiest option for Windows users.
+
+### Console Version (Python)
+For cross-platform use or development:
+
+#### Prerequisites
 - **Python 3.8+**
 - **Dependencies**:
   - `pygame`: For joystick input and visualization.
