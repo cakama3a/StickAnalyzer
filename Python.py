@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import requests
 import json
 import webbrowser
+import sys
 
 version = "2.0.3.0"
 THRESHOLD = 0.05
@@ -370,7 +371,14 @@ def submit_test_results(data):
 
 def save_results(points, timestamps, test_duration):
     try:
-        program_dir = os.path.dirname(os.path.abspath(__file__))
+        # Get the correct program directory whether running as script or exe
+        if getattr(sys, 'frozen', False):
+            # Running as compiled executable
+            program_dir = os.path.dirname(sys.executable)
+        else:
+            # Running as script
+            program_dir = os.path.dirname(os.path.abspath(__file__))
+            
         results_dir = os.path.join(program_dir, "Results")
         
         if not os.path.exists(results_dir):
