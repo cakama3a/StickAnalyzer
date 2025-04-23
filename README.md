@@ -4,7 +4,7 @@
 
 **Author**: John Punch  
 **Support the Project**: [ko-fi.com/gamepadla](https://ko-fi.com/gamepadla)  
-**Guide**: [How to Use Stick Analyzer](https://www.reddit.com/r/Controller/comments/1i831jw/stick_analyzer_complete_guide_to_gamepad_stick/) (old)
+**Guide**: [How to Use Stick Analyzer](https://www.reddit.com/r/Controller/comments/1i831jw/stick_analyzer_complete_guide_to_gamepad_stick/)  
 
 <img width="735" alt="2025-04-12_12-53" src="https://github.com/user-attachments/assets/cc31ffb5-cbdf-4547-9a46-de2c29e41ef1" />
 
