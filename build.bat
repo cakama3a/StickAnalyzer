@@ -11,7 +11,9 @@ set "CERT_COMPANY=Gamepadla"                 :: Company name for certificate
 set "CERT_EMAIL=john@gamepadla.com"          :: Email for certificate (no escaping here)
 set "CERT_PASSWORD=password123"              :: Certificate password
 set "SIGN_EXE=true"                          :: Sign the EXE file?
-set "REQUIRED_PACKAGES=pygame matplotlib requests colorama" :: Required Python packages
+set "REQUIRED_PACKAGES=pygame matplotlib requests colorama pillow" :: Required Python packages
+set "USE_PYARMOR=false"                      :: Use PyArmor for code obfuscation?
+set "PYARMOR_OPTIONS="                       :: PyArmor options (empty for free version)
 :: =====================================================================
 
 :: Set CMD encoding to UTF-8
@@ -19,6 +21,10 @@ chcp 65001 >nul
 
 :: Script for creating a clean virtual environment, installing only necessary modules
 :: and packaging Python.py into .exe using PyInstaller on Windows.
+
+:: Clean up old temporary directories
+echo Cleaning up old temporary directories...
+for /d %%D in ("%TEMP%\%OUTPUT_NAME%Build_*") do rd /s /q "%%D" 2>nul
 
 :: Path variables setup
 set "SCRIPT_DIR=%~dp0"
@@ -33,11 +39,15 @@ set "CERT_NAME=%OUTPUT_NAME%Cert"
 echo Using CERT_NAME: %CERT_NAME%
 
 set "PYTHON_SCRIPT=%SCRIPT_DIR%\Python.py"
-set "ICON_PATH=%SCRIPT_DIR%\icon.ico"
+set "ICON_PNG_PATH=%SCRIPT_DIR%\icon.png"
+set "ICON_ICO_PATH=%SCRIPT_DIR%\icon.ico"
 set "UPX_DIR="
+set "TEMP_DIR=%TEMP%\%OUTPUT_NAME%Build_%RANDOM%"
 set "CERT_PATH=%TEMP_DIR%\%CERT_NAME%.pfx"
 set "EXE_PATH=%TEMP_DIR%\dist\%OUTPUT_NAME%.exe"
 set "FINAL_EXE_PATH=%SCRIPT_DIR%\%OUTPUT_NAME%.exe"
+set "OBFUSCATED_DIR=%TEMP_DIR%\obfuscated"
+set "OBFUSCATED_SCRIPT=%OBFUSCATED_DIR%\Python.py"
 
 :: Check if Python.py exists
 echo Checking for %PYTHON_SCRIPT%...
@@ -90,7 +100,6 @@ if %ERRORLEVEL% neq 0 (
 )
 
 :: Create temporary directory using OUTPUT_NAME
-set "TEMP_DIR=%TEMP%\%OUTPUT_NAME%Build_%RANDOM%"
 echo Creating temporary directory: %TEMP_DIR%...
 mkdir "%TEMP_DIR%"
 if %ERRORLEVEL% neq 0 (
@@ -157,12 +166,37 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-:: Create a runtime hook for matplotlib backend
-echo Creating runtime hook for matplotlib...
-set "HOOK_SCRIPT=%TEMP_DIR%\hook-matplotlib.py"
-echo import matplotlib > "%HOOK_SCRIPT%"
-echo matplotlib.use('TkAgg') >> "%HOOK_SCRIPT%"
-echo print("Matplotlib backend set to TkAgg") >> "%HOOK_SCRIPT%"
+:: Install PyArmor for code obfuscation
+if "%USE_PYARMOR%"=="true" (
+    echo Installing PyArmor for code obfuscation...
+    pip install pyarmor
+    if %ERRORLEVEL% neq 0 (
+        echo Error: Failed to install PyArmor!
+        echo Continuing without obfuscation...
+        set "USE_PYARMOR=false"
+    )
+)
+
+:: Convert PNG to ICO if icon.png exists and icon.ico does not
+if exist "%ICON_PNG_PATH%" (
+    if not exist "%ICON_ICO_PATH%" (
+        echo Converting icon.png to icon.ico...
+        :: Create a temporary Python script for conversion
+        set "CONVERT_SCRIPT=%TEMP_DIR%\convert_png_to_ico.py"
+        echo from PIL import Image > "%CONVERT_SCRIPT%"
+        echo img = Image.open('%ICON_PNG_PATH%') >> "%CONVERT_SCRIPT%"
+        echo img.save('%ICON_ICO_PATH%', 'ICO') >> "%CONVERT_SCRIPT%"
+        :: Run the conversion
+        "%VENV_DIR%\Scripts\python.exe" "%CONVERT_SCRIPT%"
+        if %ERRORLEVEL% neq 0 (
+            echo Warning: Failed to convert icon.png to icon.ico. Using PNG directly.
+        ) else (
+            echo Successfully converted icon.png to icon.ico.
+        )
+    ) else (
+        echo icon.ico already exists, skipping conversion.
+    )
+)
 
 :: Ensure the output EXE is not locked
 echo Ensuring %FINAL_EXE_PATH% is not in use...
@@ -183,50 +217,127 @@ if exist "%FINAL_EXE_PATH%" (
     )
 )
 
-:: Form PyInstaller command
-set "PYINSTALLER_CMD=pyinstaller --clean --onefile"
+:: Prepare PyArmor if enabled
+if "%USE_PYARMOR%"=="true" (
+    echo Obfuscating code with PyArmor...
+    mkdir "%OBFUSCATED_DIR%" 2>nul
+    
+    :: Run PyArmor to obfuscate the main script
+    echo Running: pyarmor gen --output "%OBFUSCATED_DIR%" "%PYTHON_SCRIPT%"
+    pyarmor gen --output "%OBFUSCATED_DIR%" "%PYTHON_SCRIPT%" > "%TEMP_DIR%\pyarmor_obfuscation.log" 2>&1
+    
+    if %ERRORLEVEL% neq 0 (
+        echo Error: PyArmor obfuscation failed! Check %TEMP_DIR%\pyarmor_obfuscation.log
+        echo Continuing without obfuscation...
+        set "USE_PYARMOR=false"
+    ) else (
+        echo Code obfuscation completed successfully.
+        
+        :: Obfuscate additional .py files
+        echo Obfuscating additional .py files...
+        for %%F in ("%SCRIPT_DIR%\*.py") do (
+            if not "%%~nxF"=="Python.py" (
+                echo Obfuscating: %%~nxF
+                pyarmor gen --output "%OBFUSCATED_DIR%" "%%F" >> "%TEMP_DIR%\pyarmor_obfuscation.log" 2>&1
+                if %ERRORLEVEL% neq 0 (
+                    echo Warning: Failed to obfuscate %%~nxF, continuing...
+                )
+            )
+        )
+        
+        :: Check if the obfuscated main script exists
+        if exist "%OBFUSCATED_SCRIPT%" (
+            echo Using obfuscated script: %OBFUSCATED_SCRIPT%
+            set "PYTHON_SCRIPT=%OBFUSCATED_SCRIPT%"
+            
+            :: Verify PyArmor runtime
+            if exist "%OBFUSCATED_DIR%\pyarmor_runtime_000000\__init__.py" (
+                echo PyArmor runtime files successfully created.
+            ) else (
+                echo Error: PyArmor runtime files missing!
+                set "USE_PYARMOR=false"
+            )
+            
+            :: Log size of obfuscated script
+            echo Checking size of obfuscated Python.py...
+            dir "%OBFUSCATED_SCRIPT%"
+            
+            :: Copy resource files to obfuscated directory
+            echo Copying resource files to obfuscated directory...
+            for %%E in (png jpg gif wav mp3 csv json xml txt) do (
+                for %%F in ("%SCRIPT_DIR%\*.%%E") do (
+                    echo Copying resource: %%~nxF
+                    copy "%%F" "%OBFUSCATED_DIR%\" >nul
+                )
+            )
+        ) else (
+            echo Warning: Obfuscated script not found, using original script: %PYTHON_SCRIPT%
+        )
+    )
+)
+
+:: Form PyInstaller command with hidden imports from REQUIRED_PACKAGES
+set "PYINSTALLER_CMD=pyinstaller --clean --onefile --log-level DEBUG"
 if "%USE_NOCONSOLE%"=="true" (
     set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --noconsole"
 ) else (
     set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --console"
 )
-if exist "%ICON_PATH%" (
-    set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --icon="%ICON_PATH%""
+if exist "%ICON_ICO_PATH%" (
+    set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --icon="%ICON_ICO_PATH%""
+) else if exist "%ICON_PNG_PATH%" (
+    set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --icon="%ICON_PNG_PATH%""
+)
+if exist "%ICON_PNG_PATH%" (
+    set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --add-data="%ICON_PNG_PATH%;.""
 )
 if not "%UPX_DIR%"=="" if exist "%UPX_DIR%" (
     set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --upx-dir="%UPX_DIR%""
 )
-set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --hidden-import=matplotlib.backends.backend_tkagg"
-set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --runtime-hook="%HOOK_SCRIPT%""
+:: Add hidden imports dynamically from REQUIRED_PACKAGES
+for %%P in (%REQUIRED_PACKAGES%) do (
+    set "PYINSTALLER_CMD=!PYINSTALLER_CMD! --hidden-import=%%P"
+)
+:: Ensure PyArmor runtime is included
+if "%USE_PYARMOR%"=="true" (
+    set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --hidden-import=pyarmor_runtime_000000"
+)
 set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --workpath="%TEMP_DIR%\build""
 set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --distpath="%TEMP_DIR%\dist""
 set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --specpath="%TEMP_DIR%""
-set "PYINSTALLER_CMD=%PYINSTALLER_CMD% -n="%OUTPUT_NAME%" "%PYTHON_SCRIPT%""
+set "PYINSTALLER_CMD=%PYINSTALLER_CMD% -n "%OUTPUT_NAME%" "%PYTHON_SCRIPT%""
 
 :: Execute PyInstaller
-echo Running: %PYINSTALLER_CMD%
-%PYINSTALLER_CMD%
+echo Running PyInstaller command...
+echo Command: %PYINSTALLER_CMD%
+%PYINSTALLER_CMD% > "%TEMP_DIR%\pyinstaller.log" 2>&1
 if %ERRORLEVEL% neq 0 (
-    echo Error: PyInstaller failed!
+    echo Error: PyInstaller failed! Check %TEMP_DIR%\pyinstaller.log for details.
     pause
     exit /b 1
 )
 
 :: Wait for PyInstaller to fully release the file
-echo Waiting for file to be released...
+echo Waiting for file to be released at %EXE_PATH%...
 set "RETRY_COUNT=0"
-set "MAX_RETRIES=5"
+set "MAX_RETRIES=10"
 :check_exe
-timeout /t 2 /nobreak > nul
+timeout /t 5 /nobreak > nul
 if exist "%EXE_PATH%" (
     echo Found %EXE_PATH%
+    dir "%EXE_PATH%"
 ) else (
     set /a RETRY_COUNT+=1
     if !RETRY_COUNT! lss !MAX_RETRIES! (
         echo Attempt !RETRY_COUNT! of !MAX_RETRIES!: .exe not yet created, retrying...
+        echo Current contents of %TEMP_DIR%\dist:
+        dir "%TEMP_DIR%\dist" 2>nul
         goto :check_exe
     ) else (
         echo Error: .exe was not created after !MAX_RETRIES! attempts!
+        echo Final contents of %TEMP_DIR%\dist:
+        dir "%TEMP_DIR%\dist" 2>nul
+        echo Check %TEMP_DIR%\pyinstaller.log for PyInstaller output.
         pause
         exit /b 1
     )
